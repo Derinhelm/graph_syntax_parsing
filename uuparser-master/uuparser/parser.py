@@ -10,12 +10,9 @@ from uuparser import utils
 
 
 def run(experiment,options):
-    if options.graph_based:
-        from uuparser.mstlstm import MSTParserLSTM as Parser
-        logger.info('Working with a graph-based parser')
-    else:
-        from uuparser.arc_hybrid import ArcHybridLSTM as Parser
-        logger.info('Working with a transition-based parser')
+    
+    from uuparser.arc_hybrid import ArcHybridLSTM as Parser
+    #logger.info('Working with a transition-based parser')
 
     if not options.predict: # training
 
@@ -243,15 +240,6 @@ each")
     group.add_option("--userl", action="store_true", dest="rlFlag", default=False)
     group.add_option("--k", type="int", metavar="INTEGER", default=3,
         help="Number of stack elements to feed to MLP")
-    parser.add_option_group(group)
-
-    group = OptionGroup(parser, "Graph-based parser options")
-    group.add_option("--graph-based", action="store_true", default=False,
-                     help='use the graph-based parser instead of the\
-                     transition-based')
-    parser.add_option("--disable-labels", action="store_false", dest="labelsFlag", default=True)
-    parser.add_option("--disable-costaug", action="store_false", dest="costaugFlag", default=True)
-    parser.add_option("--projective", action="store_true", dest="proj", default=False)
     parser.add_option_group(group)
 
     group = OptionGroup(parser, "Neural network options")

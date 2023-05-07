@@ -48,12 +48,12 @@ class OptionsManager(object):
             logger.info(f"Creating output directory {options.outdir}")
             os.mkdir(options.outdir)
 
-        if not options.graph_based and (not options.predict and not
+        if (not options.predict and not
                                         (options.rlFlag or options.rlMostFlag or
                                          options.headFlag)):
             raise Exception("Must include either head, rl or rlmost (For example, if you specified --disable-head and --disable-rlmost, you must specify --userl)")
 
-        if not options.graph_based and (options.rlFlag and options.rlMostFlag):
+        if (options.rlFlag and options.rlMostFlag):
             logger.warning('Switching off rlMostFlag to allow rlFlag to take precedence')
             options.rlMostFlag = False
 
