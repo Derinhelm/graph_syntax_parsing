@@ -17,12 +17,19 @@ class ArcHybridLSTM:
 
         # import here so we don't load Dynet if just running parser.py --help for example
         from uuparser.multilayer_perceptron import MLP
-        from uuparser.feature_extractor import FeatureExtractor
+        #from uuparser.feature_extractor import FeatureExtractor
         import dynet as dy
         global dy
 
         global LEFT_ARC, RIGHT_ARC, SHIFT, SWAP
         LEFT_ARC, RIGHT_ARC, SHIFT, SWAP = 0,1,2,3
+
+        self.word_counts, words, chars, pos, cpos, self.irels, treebanks, langs = vocab
+        extra_words = 2 # MLP padding vector and OOV vector
+        self.words = {word: ind for ind, word in enumerate(words,extra_words)}
+
+        extra_chars = 1 # OOV vector
+        self.chars = {char: ind for ind, char in enumerate(chars,extra_chars)}
 
         self.model = dy.ParameterCollection()
         self.trainer = dy.AdamTrainer(self.model, alpha=options.learning_rate)
@@ -41,13 +48,15 @@ class ArcHybridLSTM:
 
         #dimensions depending on extended features
         self.nnvecs = (1 if self.headFlag else 0) + (2 if self.rlFlag or self.rlMostFlag else 0)
-        self.feature_extractor = FeatureExtractor(self.model, options, vocab, self.nnvecs)
-        self.irels = self.feature_extractor.irels
+        #self.feature_extractor = FeatureExtractor(self.model, options, vocab, self.nnvecs)
+        #self.irels = self.feature_extractor.irels # Get from vocab (code above)
 
-        if options.no_bilstms > 0:
-            mlp_in_dims = options.lstm_output_size*2*self.nnvecs*(self.k+1)
-        else:
-            mlp_in_dims = self.feature_extractor.lstm_input_size*self.nnvecs*(self.k+1)
+        #if options.no_bilstms > 0:
+        #    mlp_in_dims = options.lstm_output_size*2*self.nnvecs*(self.k+1)
+        #else:
+        #    mlp_in_dims = self.feature_extractor.lstm_input_size*self.nnvecs*(self.k+1)
+
+        mlp_in_dims = 30 # TODO: Create a logical value.
 
         self.unlabeled_MLP = MLP(self.model, 'unlabeled', mlp_in_dims, options.mlp_hidden_dims,
                                  options.mlp_hidden2_dims, 4, self.activation)
@@ -68,10 +77,13 @@ class ArcHybridLSTM:
         expression used in the loss, the first is used in rest of training
         """
 
-        #feature rep
-        empty = self.feature_extractor.empty
-        topStack = [ stack.roots[-i-1].lstms if len(stack) > i else [empty] for i in range(self.k) ]
-        topBuffer = [ buf.roots[i].lstms if len(buf) > i else [empty] for i in range(1) ]
+        #empty = self.feature_extractor.empty
+        #topStack = [ stack.roots[-i-1].lstms if len(stack) > i else [empty] for i in range(self.k) ]
+        #topBuffer = [ buf.roots[i].lstms if len(buf) > i else [empty] for i in range(1) ]
+
+        # In the future, a different way of representing the configuration will be used
+        topStack = [ stack.roots[-i-1].lstms if len(stack) > i else [] for i in range(self.k) ]
+        topBuffer = [ buf.roots[i].lstms if len(buf) > i else [] for i in range(1) ]
 
         input = dy.concatenate(list(chain(*(topStack + topBuffer))))
         output = self.unlabeled_MLP(input)
@@ -222,8 +234,11 @@ class ArcHybridLSTM:
         # test vocab but not in the training vocab
         test_embeddings = defaultdict(lambda: {})
         if options.word_emb_size > 0 and options.ext_word_emb_file:
+            #new_test_words = \
+            #    set(test_words) - self.feature_extractor.words.keys()
+
             new_test_words = \
-                set(test_words) - self.feature_extractor.words.keys()
+                set(test_words) - self.words.keys()
 
             logger.debug(f"Number of OOV word types at test time: {len(new_test_words)} (out of {len(test_words)})")
 
@@ -246,8 +261,12 @@ class ArcHybridLSTM:
                     )
 
         if options.char_emb_size > 0:
+            #new_test_chars = \
+            #    set(test_chars) - self.feature_extractor.chars.keys()
+
             new_test_chars = \
-                set(test_chars) - self.feature_extractor.chars.keys()
+                set(test_chars) - self.chars.keys()
+
             logger.debug(
                 f"Number of OOV char types at test time: {len(new_test_chars)} (out of {len(test_chars)})"
             )
@@ -286,10 +305,13 @@ class ArcHybridLSTM:
             reached_swap_for_i_sentence = False
             max_swap = 2*len(sentence)
             iSwap = 0
-            self.feature_extractor.Init(options)
+            #self.feature_extractor.Init(options)
             conll_sentence = [entry for entry in sentence if isinstance(entry, utils.ConllEntry)]
             conll_sentence = conll_sentence[1:] + [conll_sentence[0]]
-            self.feature_extractor.getWordEmbeddings(conll_sentence, False, options, test_embeddings)
+            #self.feature_extractor.getWordEmbeddings(conll_sentence, False, options, test_embeddings)
+            for entry in conll_sentence:
+                entry.vec = [] # There should be a vector from dynet here
+            conll_sentence = [for entry in conll_sentence]
             stack = ParseForest([])
             buf = ParseForest(conll_sentence)
 
@@ -340,7 +362,7 @@ class ArcHybridLSTM:
 
         errs = []
 
-        self.feature_extractor.Init(options)
+        #self.feature_extractor.Init(options)
 
         pbar = tqdm.tqdm(
             trainData,
@@ -371,7 +393,9 @@ class ArcHybridLSTM:
 
             conll_sentence = [entry for entry in sentence if isinstance(entry, utils.ConllEntry)]
             conll_sentence = conll_sentence[1:] + [conll_sentence[0]]
-            self.feature_extractor.getWordEmbeddings(conll_sentence, True, options)
+            #self.feature_extractor.getWordEmbeddings(conll_sentence, True, options)
+            for entry in conll_sentence:
+                entry.vec = [] # There should be a vector from dynet here            
             stack = ParseForest([])
             buf = ParseForest(conll_sentence)
             hoffset = 1 if self.headFlag else 0
@@ -450,7 +474,7 @@ class ArcHybridLSTM:
                 lerrs = []
 
                 dy.renew_cg()
-                self.feature_extractor.Init(options)
+                #self.feature_extractor.Init(options)
 
         if len(errs) > 0:
             eerrs = (dy.esum(errs))
