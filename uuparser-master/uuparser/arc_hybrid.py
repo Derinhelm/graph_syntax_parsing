@@ -8,6 +8,9 @@ from collections import defaultdict
 import json
 from loguru import logger
 
+import torch
+import torch.nn as nn
+
 import tqdm
 
 from uuparser import utils
@@ -17,9 +20,6 @@ class ArcHybridLSTM:
 
         # import here so we don't load Dynet if just running parser.py --help for example
         from uuparser.multilayer_perceptron import MLP
-        #from uuparser.feature_extractor import FeatureExtractor
-        import dynet as dy
-        global dy
 
         global LEFT_ARC, RIGHT_ARC, SHIFT, SWAP
         LEFT_ARC, RIGHT_ARC, SHIFT, SWAP = 0,1,2,3
@@ -31,13 +31,18 @@ class ArcHybridLSTM:
         extra_chars = 1 # OOV vector
         self.chars = {char: ind for ind, char in enumerate(chars,extra_chars)}
 
-        self.model = dy.ParameterCollection()
-        self.trainer = dy.AdamTrainer(self.model, alpha=options.learning_rate)
+        self.activation = torch.nn.Tanh() #Default value from source code.
 
-        self.activations = {'tanh': dy.tanh, 'sigmoid': dy.logistic, 'relu':
-                            dy.rectify, 'tanh3': (lambda x:
-                            dy.tanh(dy.cwise_multiply(dy.cwise_multiply(x, x), x)))}
-        self.activation = self.activations[options.activation]
+        self.mlp_in_dims = 30 # TODO: Create a logical value.
+
+        self.unlabeled_MLP = MLP(mlp_in_dims, options.mlp_hidden_dims,
+                                 options.mlp_hidden2_dims, 4, self.activation)
+        self.labeled_MLP = MLP(mlp_in_dims, options.mlp_hidden_dims,
+                               options.mlp_hidden2_dims,2*len(self.irels)+2, self.activation)
+
+
+        self.unlabeled_optimizer = optim.Adam(self.unlabeled_MLP.parameters(), lr=options.learning_rate)
+        self.labeled_optimizer = optim.Adam(self.labeled_MLP.parameters(), lr=options.learning_rate)
 
         self.oracle = options.oracle
 
@@ -46,23 +51,14 @@ class ArcHybridLSTM:
         self.rlFlag = options.rlFlag
         self.k = options.k
 
-        #dimensions depending on extended features
-        self.nnvecs = (1 if self.headFlag else 0) + (2 if self.rlFlag or self.rlMostFlag else 0)
-        #self.feature_extractor = FeatureExtractor(self.model, options, vocab, self.nnvecs)
-        #self.irels = self.feature_extractor.irels # Get from vocab (code above)
+    def create_configuration_representation(self, stack, buf): 
+        # TODO: add sentence for representation creating
+        #topStack = [ stack.roots[-i-1].lstms if len(stack) > i else [] for i in range(self.k) ]
+        #topBuffer = [ buf.roots[i].lstms if len(buf) > i else [] for i in range(1) ]
 
-        #if options.no_bilstms > 0:
-        #    mlp_in_dims = options.lstm_output_size*2*self.nnvecs*(self.k+1)
-        #else:
-        #    mlp_in_dims = self.feature_extractor.lstm_input_size*self.nnvecs*(self.k+1)
+        #input = dy.concatenate(list(chain(*(topStack + topBuffer))))
 
-        mlp_in_dims = 30 # TODO: Create a logical value.
-
-        self.unlabeled_MLP = MLP(self.model, 'unlabeled', mlp_in_dims, options.mlp_hidden_dims,
-                                 options.mlp_hidden2_dims, 4, self.activation)
-        self.labeled_MLP = MLP(self.model, 'labeled' ,mlp_in_dims, options.mlp_hidden_dims,
-                               options.mlp_hidden2_dims,2*len(self.irels)+2,self.activation)
-
+        return torch.randn(self.mlp_in_dims)
 
     def __evaluate(self, stack, buf, train):
         """
@@ -77,15 +73,7 @@ class ArcHybridLSTM:
         expression used in the loss, the first is used in rest of training
         """
 
-        #empty = self.feature_extractor.empty
-        #topStack = [ stack.roots[-i-1].lstms if len(stack) > i else [empty] for i in range(self.k) ]
-        #topBuffer = [ buf.roots[i].lstms if len(buf) > i else [empty] for i in range(1) ]
-
-        # In the future, a different way of representing the configuration will be used
-        topStack = [ stack.roots[-i-1].lstms if len(stack) > i else [] for i in range(self.k) ]
-        topBuffer = [ buf.roots[i].lstms if len(buf) > i else [] for i in range(1) ]
-
-        input = dy.concatenate(list(chain(*(topStack + topBuffer))))
+        input = self.create_configuration_representation(stack, buf)
         output = self.unlabeled_MLP(input)
         routput = self.labeled_MLP(input)
 
@@ -334,8 +322,6 @@ class ArcHybridLSTM:
                 if best[1] == SWAP:
                     iSwap += 1
 
-            dy.renew_cg()
-
             #keep in memory the information we need, not all the vectors
             oconll_sentence = [entry for entry in osentence if isinstance(entry, utils.ConllEntry)]
             oconll_sentence = oconll_sentence[1:] + [oconll_sentence[0]]
@@ -466,26 +452,28 @@ class ArcHybridLSTM:
 
             #footnote 8 in Eli's original paper
             if len(errs) > 50: # or True:
-                eerrs = dy.esum(errs)
+                eerrs = torch.sum(errs) 
                 scalar_loss = eerrs.scalar_value() #forward
                 eerrs.backward()
-                self.trainer.update()
+                #self.trainer.update()
+                self.labeled_optimizer.step() # TODO Какой из оптимизаторов ???
+                self.unlabeled_optimizer.step()
                 errs = []
                 lerrs = []
 
-                dy.renew_cg()
                 #self.feature_extractor.Init(options)
 
         if len(errs) > 0:
-            eerrs = (dy.esum(errs))
+            eerrs = torch.sum(errs) 
             eerrs.scalar_value()
             eerrs.backward()
-            self.trainer.update()
+            #self.trainer.update()
+            self.labeled_optimizer.step() # TODO Какой из оптимизаторов ???
+            self.unlabeled_optimizer.step()
 
             errs = []
             lerrs = []
 
-            dy.renew_cg()
 
         self.trainer.update()
         logger.info(f"Loss: {mloss/iSentence}")
