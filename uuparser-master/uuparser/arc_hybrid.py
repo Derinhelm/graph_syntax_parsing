@@ -31,7 +31,7 @@ class ArcHybridLSTM:
         extra_chars = 1 # OOV vector
         self.chars = {char: ind for ind, char in enumerate(chars,extra_chars)}
 
-        self.activation = torch.nn.Tanh() #Default value from source code.
+        self.activation = options.activation
 
         self.mlp_in_dims = 30 # TODO: Create a logical value.
 

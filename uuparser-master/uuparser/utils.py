@@ -453,9 +453,8 @@ def inorder(sentence):
 
 def set_seeds(options):
     python_seed = 1
-    if not options.predict and options.dynet_seed: # seeds shouldn't make any difference when predicting
-        logger.debug("Using default Python seed")
-        random.seed(python_seed)
+    logger.debug("Using default Python seed")
+    random.seed(python_seed)
 
 
 def generate_seed():

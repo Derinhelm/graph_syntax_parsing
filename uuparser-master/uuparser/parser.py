@@ -1,7 +1,6 @@
 from optparse import OptionParser, OptionGroup
 from uuparser.options_manager import OptionsManager
 import pickle, os, time, sys, copy, itertools, re, random
-import dynet_config
 
 from loguru import logger
 from shutil import copyfile
@@ -181,12 +180,6 @@ def main():
     parser.add_option("--params", metavar="FILE", default="params.pickle", help="Parameters file")
     parser.add_option("--model", metavar="FILE", default="barchybrid.model",
         help="Load/Save model file")
-    parser.add_option("--elmo", metavar="FILE", default=None,
-                      help="HDF5 file that contains ELMo layers for sentences.")
-    parser.add_option("--elmo_gamma", type="float", metavar="FLOAT",
-                      default=1.0, help="Gamma factor to tune ELMo.")
-    parser.add_option("--elmo_learn_gamma", action="store_true",
-                      default=False, help="Learn the gamma factor for ELMo.")
 
     group = OptionGroup(parser, "Experiment options")
     group.add_option("--include", metavar="LIST", help="List of languages by ISO code to be run \
@@ -243,10 +236,6 @@ each")
     parser.add_option_group(group)
 
     group = OptionGroup(parser, "Neural network options")
-    group.add_option("--dynet-seed", type="int", metavar="INTEGER",
-        help="Random seed for Dynet", default=0)
-    group.add_option("--dynet-mem", type="int", metavar="INTEGER",
-        help="Memory to assign Dynet in MB", default=512)
     group.add_option("--learning-rate", type="float", metavar="FLOAT",
         help="Learning rate for neural network optimizer", default=0.001)
     group.add_option("--char-emb-size", type="int", metavar="INTEGER",
@@ -259,8 +248,6 @@ each")
         help="Pos embedding dimensions", default=0)
     group.add_option("--tbank-emb-size", type="int", metavar="INTEGER",
         help="Treebank embedding dimensions", default=12)
-    group.add_option("--lstm-output-size", type="int", metavar="INTEGER",
-        help="Word BiLSTM dimensions", default=125)
     group.add_option("--mlp-hidden-dims", type="int", metavar="INTEGER",
         help="MLP hidden layer dimensions", default=100)
     group.add_option("--mlp-hidden2-dims", type="int", metavar="INTEGER",
@@ -273,8 +260,6 @@ each")
     group.add_option("--max-ext-emb", type="int", metavar="INTEGER",
         help='Maximum number of external embeddings to load', default=-1)
     group.add_option("--activation", help="Activation function in the MLP", default="tanh")
-    group.add_option("--no-bilstms", type="int", metavar="INTEGER",
-        help='Number of stacked BiLstms - set to 0 to disable', default=2)
     parser.add_option_group(group)
 
     group = OptionGroup(parser, "Logging options")
@@ -305,7 +290,6 @@ each")
 
     # really important to do this before anything else to make experiments reproducible
     utils.set_seeds(options)
-    dynet_config.set(mem=options.dynet_mem, random_seed=options.dynet_seed)
 
     om = OptionsManager(options)
     experiments = om.create_experiment_list(options) # list of namedtuples
