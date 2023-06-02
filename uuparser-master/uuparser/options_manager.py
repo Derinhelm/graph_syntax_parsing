@@ -57,10 +57,6 @@ class OptionsManager(object):
             logger.warning('Switching off rlMostFlag to allow rlFlag to take precedence')
             options.rlMostFlag = False
 
-        if options.word_emb_size == 0 and options.pos_emb_size == 0 and\
-            options.char_lstm_output_size == 0 and not options.external_embedding:
-            raise Exception("All embeddings switched off: must use one of words, pos tags, chars, or external embeddings")
-
         if not options.multiling:
             options.tbank_emb_size = 0
 

@@ -220,62 +220,6 @@ class ArcHybridLSTM:
 
         # get external embeddings for the set of words and chars in the
         # test vocab but not in the training vocab
-        test_embeddings = defaultdict(lambda: {})
-        if options.word_emb_size > 0 and options.ext_word_emb_file:
-            #new_test_words = \
-            #    set(test_words) - self.feature_extractor.words.keys()
-
-            new_test_words = \
-                set(test_words) - self.words.keys()
-
-            logger.debug(f"Number of OOV word types at test time: {len(new_test_words)} (out of {len(test_words)})")
-
-            if len(new_test_words) > 0:
-                # no point loading embeddings if there are no words to look for
-                for lang in test_langs:
-                    embeddings = utils.get_external_embeddings(
-                        options,
-                        emb_file=options.ext_word_emb_file,
-                        lang=lang,
-                        words=new_test_words
-                    )
-                    test_embeddings["words"].update(embeddings)
-                if len(test_langs) > 1 and test_embeddings["words"]:
-                    logger.debug(
-                        "External embeddings found for {0} words (out of {1})".format(
-                            len(test_embeddings["words"]),
-                            len(new_test_words),
-                        ),
-                    )
-
-        if options.char_emb_size > 0:
-            #new_test_chars = \
-            #    set(test_chars) - self.feature_extractor.chars.keys()
-
-            new_test_chars = \
-                set(test_chars) - self.chars.keys()
-
-            logger.debug(
-                f"Number of OOV char types at test time: {len(new_test_chars)} (out of {len(test_chars)})"
-            )
-
-            if len(new_test_chars) > 0:
-                for lang in test_langs:
-                    embeddings = utils.get_external_embeddings(
-                        options,
-                        emb_file=options.ext_char_emb_file,
-                        lang=lang,
-                        words=new_test_chars,
-                        chars=True
-                    )
-                    test_embeddings["chars"].update(embeddings)
-                if len(test_langs) > 1 and test_embeddings["chars"]:
-                    logger.debug(
-                        "External embeddings found for {0} chars (out of {1})".format(
-                            len(test_embeddings["chars"]),
-                            len(new_test_chars),
-                        ),
-                    )
 
         data = utils.read_conll_dir(treebanks,datasplit,char_map=char_map)
 
@@ -296,7 +240,6 @@ class ArcHybridLSTM:
             #self.feature_extractor.Init(options)
             conll_sentence = [entry for entry in sentence if isinstance(entry, utils.ConllEntry)]
             conll_sentence = conll_sentence[1:] + [conll_sentence[0]]
-            #self.feature_extractor.getWordEmbeddings(conll_sentence, False, options, test_embeddings)
             for entry in conll_sentence:
                 entry.vec = [] # There should be a vector from dynet here
             conll_sentence = [for entry in conll_sentence]

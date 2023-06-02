@@ -219,8 +219,6 @@ each")
         action="store_true", default=False)
     group.add_option("--forced-tbank-emb", type="string", default=None)
     group.add_option("--char-map-file", help="Load character mapping from json", metavar="FILE", default=None)
-    group.add_option("--unfiltered-vecs", help='Use unfiltered external embeddings',
-        action="store_true", default=False)
     parser.add_option_group(group)
 
     group = OptionGroup(parser, "Transition-based parser options")
@@ -240,12 +238,6 @@ each")
         help="Learning rate for neural network optimizer", default=0.001)
     group.add_option("--char-emb-size", type="int", metavar="INTEGER",
         help="Character embedding dimensions", default=500)
-    group.add_option("--char-lstm-output-size", type="int", metavar="INTEGER",
-        help="Character BiLSTM dimensions", default=100)
-    group.add_option("--word-emb-size", type="int", metavar="INTEGER",
-        help="Word embedding dimensions", default=100)
-    group.add_option("--pos-emb-size", type="int", metavar="INTEGER",
-        help="Pos embedding dimensions", default=0)
     group.add_option("--tbank-emb-size", type="int", metavar="INTEGER",
         help="Treebank embedding dimensions", default=12)
     group.add_option("--mlp-hidden-dims", type="int", metavar="INTEGER",

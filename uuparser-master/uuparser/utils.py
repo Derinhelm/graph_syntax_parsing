@@ -531,41 +531,6 @@ def extract_embeddings_from_file(filename, words=None, max_emb=-1, filtered_file
 
 
 
-def get_external_embeddings(options, emb_file=None, emb_dir=None,
-                            lang=None, words=None, chars=False):
-
-    external_embedding = {}
-
-    if emb_file:
-        external_embedding = extract_embeddings_from_file(
-            emb_file, words, options.max_ext_emb)
-
-    elif emb_dir:
-        if not lang:
-            raise Exception("No language specified for external embeddings")
-        else:
-            lang_iso_dict = load_lang_iso_dict(options.json_isos)
-            emb_dir = os.path.join(emb_dir, lang)
-
-            if chars:
-                emb_file = os.path.join(
-                    emb_dir,lang_iso_dict[lang] + '.vectors.chars.txt')
-            else:
-                if options.shared_task or options.unfiltered_vecs:
-                    emb_file = os.path.join(
-                        emb_dir,lang_iso_dict[lang] + '.vectors.txt')
-                else:
-                    emb_file = os.path.join(
-                        emb_dir,lang_iso_dict[lang] + '.vectors.filtered.txt')
-
-            if os.path.exists(emb_file):
-                embeddings = extract_embeddings_from_file(
-                    emb_file, words, options.max_ext_emb)
-                external_embedding.update(embeddings)
-            else:
-                logger.warning(f"Warning: {emb_file} does not exist, proceeding without")
-
-    return external_embedding
 
 
 # for the most part, we want to send stored options to the parser when in
