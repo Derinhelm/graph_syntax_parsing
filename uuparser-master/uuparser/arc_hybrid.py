@@ -25,7 +25,7 @@ class ArcHybridLSTM:
         global LEFT_ARC, RIGHT_ARC, SHIFT, SWAP
         LEFT_ARC, RIGHT_ARC, SHIFT, SWAP = 0,1,2,3
 
-        _, _, _, _, _, self.irels, treebanks = vocab
+        self.irels, treebanks = vocab
 
         self.activation = options.activation
 
@@ -207,12 +207,8 @@ class ArcHybridLSTM:
 
     def Predict(self, treebanks, datasplit, options):
         reached_max_swap = 0
-        char_map = {}
-        if options.char_map_file:
-            char_map_fh = open(options.char_map_file,encoding='utf-8')
-            char_map = json.loads(char_map_fh.read())
 
-        data = utils.read_conll_dir(treebanks,datasplit,char_map=char_map)
+        data = utils.read_conll_dir(treebanks,datasplit)
 
         pbar = tqdm.tqdm(
             data,
@@ -233,7 +229,7 @@ class ArcHybridLSTM:
             conll_sentence = conll_sentence[1:] + [conll_sentence[0]]
             for entry in conll_sentence:
                 entry.vec = [] # There should be a vector from dynet here
-            conll_sentence = [for entry in conll_sentence]
+            conll_sentence = [entry for entry in conll_sentence]
             stack = ParseForest([])
             buf = ParseForest(conll_sentence)
 

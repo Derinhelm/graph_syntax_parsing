@@ -13,16 +13,13 @@ from loguru import logger
 
 import tqdm
 
-UTILS_PATH = pathlib.Path(__file__).parent/"utils"
 
-# a global variable so we don't have to keep loading from file repeatedly
-iso_dict = {}
-reverse_iso_dict = {}
+UTILS_PATH = pathlib.Path(__file__).parent/"utils"
 
 
 class ConllEntry:
     def __init__(self, id, form, lemma, pos, cpos, feats=None, parent_id=None, relation=None,
-        deps=None, misc=None, treebank_id=None, proxy_tbank=None, language=None, char_rep=None):
+        deps=None, misc=None, treebank_id=None, proxy_tbank=None, char_rep=None):
 
         self.id = id
         self.form = form
@@ -42,7 +39,6 @@ class ConllEntry:
         self.pred_relation = None
         self.treebank_id = treebank_id
         self.proxy_tbank = proxy_tbank
-        self.language = language
 
         self.pred_pos = None
         self.pred_cpos = None
@@ -157,12 +153,12 @@ def isProj(sentence):
     return len(forest.roots) == 1
 
 
-def get_vocab(treebanks,datasplit,char_map={}):
+def get_vocab(treebanks,datasplit):
     """
     Collect frequencies of words, cpos, pos and deprels + languages.
     """
 
-    data = read_conll_dir(treebanks,datasplit,char_map=char_map)
+    data = read_conll_dir(treebanks,datasplit)
 
     # could use sets directly rather than counters for most of these,
     # but having the counts might be useful in the future or possibly for debugging etc
@@ -180,53 +176,10 @@ def get_vocab(treebanks,datasplit,char_map={}):
     return (list(relCount.keys()), list(tbankCount.keys()))
 
 
-def load_iso_dict(json_file=UTILS_PATH/'ud_iso.json'):
-    logger.debug(f"Loading ISO dict from {json_file}")
-    global iso_dict
-    ud_iso_file = open(json_file,encoding='utf-8')
-    json_str = ud_iso_file.read()
-    iso_dict = json.loads(json_str)
-
-
-def load_reverse_iso_dict(json_file=UTILS_PATH/'ud_iso.json'):
-    global reverse_iso_dict
-    if not iso_dict:
-        load_iso_dict(json_file=json_file)
-    reverse_iso_dict = {v: k for k, v in iso_dict.items()}
-
-
-# convert treebank to language by removing everything after underscore
-def get_lang_from_tbank_name(tbank_name):
-
-    # weird exceptions of separate langs with dashes
-    m = re.match('UD_(Norwegian-(Bokmaal|Nynorsk))',tbank_name)
-    if m:
-        lang = m.group(1)
-    else:
-        m = re.search('^UD_(.*?)(-|$)',tbank_name)
-        lang = m.group(1) if m else tbank_name
-
-    return lang
-
-
-def get_lang_from_tbank_id(tbank_id):
-    if not tbank_id:
-        return None
-
-    if not reverse_iso_dict:
-        load_reverse_iso_dict()
-    return get_lang_from_tbank_name(reverse_iso_dict[tbank_id])
-
-
-# from a list of treebanks, return those that match a particular language
-def get_treebanks_from_lang(treebank_ids,lang):
-   return [treebank_id for treebank_id in treebank_ids if get_lang_from_tbank_id(treebank_id) == lang]
-
-
 def get_all_treebanks(options):
 
-    if not iso_dict:
-        load_iso_dict(options.json_isos)
+    iso_dict = {"UD_Russian-SynTagRus": "ru_syntagrus"} #TODO
+
     treebank_metadata = iso_dict.items()
 
     json_treebanks = [UDtreebank(ele, options) for ele in treebank_metadata]
@@ -234,23 +187,22 @@ def get_all_treebanks(options):
     return json_treebanks
 
 
-def read_conll_dir(treebanks,filetype,maxSize=-1,char_map={}):
+def read_conll_dir(treebanks,filetype,maxSize=-1):
     logger.debug("Max size for each corpus: ", maxSize)
     if filetype == "train":
-        return chain(*(read_conll(treebank.trainfile, treebank.iso_id, treebank.proxy_tbank, maxSize, train=True, char_map=char_map) for treebank in treebanks))
+        return chain(*(read_conll(treebank.trainfile, treebank.iso_id, treebank.proxy_tbank, maxSize, train=True) for treebank in treebanks))
     elif filetype == "dev":
-        return chain(*(read_conll(treebank.devfile, treebank.iso_id, treebank.proxy_tbank, train=False, char_map=char_map) for treebank in treebanks))
+        return chain(*(read_conll(treebank.devfile, treebank.iso_id, treebank.proxy_tbank, train=False) for treebank in treebanks))
     elif filetype == "test":
-        return chain(*(read_conll(treebank.testfile, treebank.iso_id, treebank.proxy_tbank, train=False, char_map=char_map) for treebank in treebanks))
+        return chain(*(read_conll(treebank.testfile, treebank.iso_id, treebank.proxy_tbank, train=False) for treebank in treebanks))
 
 
-def generate_root_token(treebank_id, proxy_tbank, language):
+def generate_root_token(treebank_id, proxy_tbank):
     return ConllEntry(0, '*root*', '*root*', 'ROOT-POS', 'ROOT-CPOS', '_', -1,
-        'rroot', '_', '_',treebank_id=treebank_id, proxy_tbank=proxy_tbank,
-        language=language)
+        'rroot', '_', '_',treebank_id=treebank_id, proxy_tbank=proxy_tbank)
 
 
-def read_conll(filename, treebank_id=None, proxy_tbank=None, maxSize=-1, hard_lim=False, vocab_prep=False, drop_nproj=False, train=True, char_map={}):
+def read_conll(filename, treebank_id=None, proxy_tbank=None, maxSize=-1, hard_lim=False, vocab_prep=False, drop_nproj=False, train=True):
     # hard lim means capping the corpus size across the whole training procedure
     # soft lim means using a sample of the whole corpus at each epoch
     fh = open(filename,'r',encoding='utf-8')
@@ -260,11 +212,7 @@ def read_conll(filename, treebank_id=None, proxy_tbank=None, maxSize=-1, hard_li
     ts = time.time()
     dropped = 0
     sents_read = 0
-    if treebank_id:
-        language = get_lang_from_tbank_id(treebank_id)
-    else:
-        language = None
-    tokens = [generate_root_token(treebank_id, proxy_tbank, language)]
+    tokens = [generate_root_token(treebank_id, proxy_tbank)]
     yield_count = 0
     if maxSize > 0 and not hard_lim:
         sents = []
@@ -297,18 +245,15 @@ def read_conll(filename, treebank_id=None, proxy_tbank=None, maxSize=-1, hard_li
                 else:
                     logger.debug('Non-projective sentence dropped')
                     dropped += 1
-            tokens = [generate_root_token(treebank_id, proxy_tbank, language)]
+            tokens = [generate_root_token(treebank_id, proxy_tbank)]
         else:
             if line[0] == '#' or '-' in tok[0] or '.' in tok[0]: # a comment line, add to tokens as is
                 tokens.append(line.strip())
             else: # an actual ConllEntry, add to tokens
                 char_rep = tok[1] # representation to use in character model
-                if language and language in char_map:
-                    for char in char_map[language]:
-                        char_rep = re.sub(char,char_map[language][char],char_rep)
                 if tok[2] == "_":
                     tok[2] = tok[1].lower()
-                token = ConllEntry(int(tok[0]), tok[1], tok[2], tok[4], tok[3], tok[5], int(tok[6]) if tok[6] != '_' else -1, tok[7], tok[8], tok[9],treebank_id=treebank_id,proxy_tbank=proxy_tbank,language=language,char_rep=char_rep)
+                token = ConllEntry(int(tok[0]), tok[1], tok[2], tok[4], tok[3], tok[5], int(tok[6]) if tok[6] != '_' else -1, tok[7], tok[8], tok[9],treebank_id=treebank_id,proxy_tbank=proxy_tbank,char_rep=char_rep)
 
                 tokens.append(token)
 
@@ -445,10 +390,6 @@ def fix_stored_options(stored_opt,options):
     stored_opt.ext_char_emb_file = options.ext_char_emb_file
     stored_opt.max_ext_emb = options.max_ext_emb
     stored_opt.shared_task = options.shared_task
-    if hasattr(options,'char_map_file'):
-        stored_opt.char_map_file = options.char_map_file
-    if hasattr(stored_opt,'lang_emb_size'):
-        stored_opt.tbank_emb_size = stored_opt.lang_emb_size
 
 
 class TqdmCompatibleStream:

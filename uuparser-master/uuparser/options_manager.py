@@ -15,11 +15,6 @@ class OptionsManager(object):
         object to harmonise the way we deal with the parser
         """
 
-        # load these straight away to make sure they're always available
-        #TODO: options compatibility TB vs GB
-        utils.load_iso_dict(options.json_isos)
-        utils.load_reverse_iso_dict(options.json_isos)
-
         if options.include:
             if not options.predict and not options.datadir:
                 raise Exception("You need to specify --datadir")

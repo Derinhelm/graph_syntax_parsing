@@ -10,7 +10,7 @@ from uuparser import utils
 
 def run(experiment,options):
     
-    from uuparser.arc_hybrid import ArcHybridLSTM as Parser
+    from uuparser.arc_hybrid import ArcHybridLSTM
     #logger.info('Working with a transition-based parser')
 
     if not options.predict: # training
@@ -27,14 +27,14 @@ def run(experiment,options):
                 pickle.dump((vocab, options), paramsfp)
 
                 logger.debug('Initializing the model')
-                parser = Parser(vocab, options)
+                parser = ArcHybridLSTM(vocab, options)
         else:  #continue
             if options.continueParams:
                 paramsfile = options.continueParams
             with open(paramsfile, 'rb') as paramsfp:
                 stored_vocab, stored_options = pickle.load(paramsfp)
                 logger.debug('Initializing the model:')
-                parser = Parser(stored_vocab, stored_options)
+                parser = ArcHybridLSTM(stored_vocab, stored_options)
 
             parser.Load(options.continueModel)
 
@@ -102,7 +102,7 @@ def run(experiment,options):
             # we need to update/add certain options based on new user input
             utils.fix_stored_options(stored_opt,options)
 
-            parser = Parser(stored_vocab, stored_opt)
+            parser = ArcHybridLSTM(stored_vocab, stored_opt)
             model = os.path.join(experiment.modeldir, options.model)
             parser.Load(model)
 
@@ -186,8 +186,6 @@ def main():
 if using UD. If not specified need to specify trainfile at least. When used in combination with \
 --multiling, trains a common parser for all languages. Otherwise, train monolingual parsers for \
 each")
-    group.add_option("--json-isos", metavar="FILE", help="JSON file with treebank to ISO dictionary",
-        default=str(utils.UTILS_PATH/"ud2.2_iso.json"))
     group.add_option("--trainfile", metavar="FILE", help="Annotated CONLL(U) train file")
     group.add_option("--devfile", metavar="FILE", help="Annotated CONLL(U) dev file")
     group.add_option("--testfile", metavar="FILE", help="Annotated CONLL(U) test file")
@@ -218,7 +216,6 @@ each")
     group.add_option("--predict-all-epochs", help='Ensures outfiles contain epoch number from model file',
         action="store_true", default=False)
     group.add_option("--forced-tbank-emb", type="string", default=None)
-    group.add_option("--char-map-file", help="Load character mapping from json", metavar="FILE", default=None)
     parser.add_option_group(group)
 
     group = OptionGroup(parser, "Transition-based parser options")
