@@ -10,6 +10,7 @@ from loguru import logger
 
 import torch
 import torch.nn as nn
+import torch.optim as optim
 
 import tqdm
 
@@ -24,20 +25,15 @@ class ArcHybridLSTM:
         global LEFT_ARC, RIGHT_ARC, SHIFT, SWAP
         LEFT_ARC, RIGHT_ARC, SHIFT, SWAP = 0,1,2,3
 
-        self.word_counts, words, chars, pos, cpos, self.irels, treebanks, langs = vocab
-        extra_words = 2 # MLP padding vector and OOV vector
-        self.words = {word: ind for ind, word in enumerate(words,extra_words)}
-
-        extra_chars = 1 # OOV vector
-        self.chars = {char: ind for ind, char in enumerate(chars,extra_chars)}
+        _, _, _, _, _, self.irels, treebanks = vocab
 
         self.activation = options.activation
 
         self.mlp_in_dims = 30 # TODO: Create a logical value.
 
-        self.unlabeled_MLP = MLP(mlp_in_dims, options.mlp_hidden_dims,
+        self.unlabeled_MLP = MLP(self.mlp_in_dims, options.mlp_hidden_dims,
                                  options.mlp_hidden2_dims, 4, self.activation)
-        self.labeled_MLP = MLP(mlp_in_dims, options.mlp_hidden_dims,
+        self.labeled_MLP = MLP(self.mlp_in_dims, options.mlp_hidden_dims,
                                options.mlp_hidden2_dims,2*len(self.irels)+2, self.activation)
 
 
@@ -215,11 +211,6 @@ class ArcHybridLSTM:
         if options.char_map_file:
             char_map_fh = open(options.char_map_file,encoding='utf-8')
             char_map = json.loads(char_map_fh.read())
-        # should probably use a namedtuple in get_vocab to make this prettier
-        _, test_words, test_chars, _, _, _, test_treebanks, test_langs = utils.get_vocab(treebanks,datasplit,char_map)
-
-        # get external embeddings for the set of words and chars in the
-        # test vocab but not in the training vocab
 
         data = utils.read_conll_dir(treebanks,datasplit,char_map=char_map)
 

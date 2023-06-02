@@ -1,4 +1,4 @@
-from collections import defaultdict, Counter, OrderedDict
+from collections import defaultdict, Counter
 import re
 import os,time
 from itertools import chain
@@ -166,10 +166,6 @@ def get_vocab(treebanks,datasplit,char_map={}):
 
     # could use sets directly rather than counters for most of these,
     # but having the counts might be useful in the future or possibly for debugging etc
-    wordsCount = Counter()
-    charsCount = Counter()
-    posCount = Counter()
-    cposCount = Counter()
     relCount = Counter()
     tbankCount = Counter() # note that one language can have several treebanks
     langCount = Counter()
@@ -177,23 +173,11 @@ def get_vocab(treebanks,datasplit,char_map={}):
     for sentence in data:
         for node in sentence:
             if isinstance(node, ConllEntry):
-                wordsCount.update([node.norm])
-                if node.char_rep != u"*root*":
-                    charsCount.update(node.char_rep)
-                posCount.update([node.pos])
-                cposCount.update([node.cpos])
                 relCount.update([node.relation])
                 treebank_id = node.treebank_id
                 tbankCount.update([treebank_id])
-                lang = get_lang_from_tbank_id(treebank_id)
-                langCount.update([lang])
 
-    # the redundancy with wordsCount is deliberate and crucial to ensure the word lookup
-    # loads the same when predicting with a saved model later on
-    # this is also another reason not to use sets for everything here as they are unordered
-    # which creates problems when loading from file at predict time
-    return (wordsCount, list(wordsCount.keys()), list(charsCount.keys()), list(posCount.keys()),
-            list(cposCount.keys()), list(relCount.keys()), list(tbankCount.keys()), list(langCount.keys()))
+    return (list(relCount.keys()), list(tbankCount.keys()))
 
 
 def load_iso_dict(json_file=UTILS_PATH/'ud_iso.json'):
@@ -209,21 +193,6 @@ def load_reverse_iso_dict(json_file=UTILS_PATH/'ud_iso.json'):
     if not iso_dict:
         load_iso_dict(json_file=json_file)
     reverse_iso_dict = {v: k for k, v in iso_dict.items()}
-
-
-def load_lang_iso_dict(json_file=UTILS_PATH/'ud_iso.json'):
-
-    if not iso_dict:
-        load_iso_dict(json_file)
-    lang_iso_dict = {}
-
-    for tb_name, tb_iso in iso_dict.items():
-        lang_name = get_lang_from_tbank_name(tb_name)
-        lang_iso = get_lang_iso(tb_iso)
-
-        lang_iso_dict[lang_name] = lang_iso
-
-    return lang_iso_dict
 
 
 # convert treebank to language by removing everything after underscore
@@ -247,19 +216,6 @@ def get_lang_from_tbank_id(tbank_id):
     if not reverse_iso_dict:
         load_reverse_iso_dict()
     return get_lang_from_tbank_name(reverse_iso_dict[tbank_id])
-
-
-# gets everything before the underscore in treebank iso e.g. "sv_talbanken" -> "sv"
-# with an exception for the two Norwegian variants where it's useful to consider them
-# as separate languages
-def get_lang_iso(treebank_iso):
-
-    # before UD 2.2 not all treebank isos contained underscores
-    if not re.search(r'_',treebank_iso):
-        return treebank_iso
-    else:
-        m = re.match(r'(.*_(nynorsk|bokmaal)?)',treebank_iso)
-        return m.group(1).rstrip('_')
 
 
 # from a list of treebanks, return those that match a particular language
@@ -474,63 +430,6 @@ def get_LAS_score(filename, conllu=True):
             score = float(las_line.split('=')[1].split()[0])
 
     return score
-
-import lzma
-
-def extract_embeddings_from_file(filename, words=None, max_emb=-1, filtered_filename=None):
-    # words should be a set used to filter the embeddings
-    logger.info(f"Extracting embeddings from {filename}")
-    ts = time.time()
-    line_count = 0
-    error_count = 0 # e.g. invalid utf-8 in embeddings file
-
-    #with open(filename,'r') as fh: # byte string
-    with lzma.open(filename, mode='rt', encoding='utf-8') as fh:
-
-        next(fh) # ignore first line with embedding stats
-        embeddings = OrderedDict()
-
-        while True:
-            if max_emb < 0 or line_count < max_emb:
-                try:
-                    line = next(fh)
-                    # only split on normal space, not e.g. non-break space
-                    eles = line.strip().split(" ")
-                    word = re.sub(u"\xa0"," ",eles[0]) # replace non-break space with regular space
-                    if not words or word in words:
-                        embeddings[word] = [float(f) for f in eles[1:]]
-                except StopIteration:
-                    break
-                except UnicodeDecodeError:
-                    logger.error(f"Unable to read word at line {line_count}: {word!r}")
-                    error_count += 1
-                line_count += 1
-                if line_count % 100000 == 0:
-                    logger.debug(f"Reading line: {line_count}")
-            else:
-                break
-
-    logger.debug(f"Read {line_count:d} embeddings")
-    te = time.time()
-    logger.info(f'Time: {te-ts:.2g}s')
-    if words:
-        logger.debug(f"{len(embeddings):d} entries found from vocabulary (out of {len(words):d})")
-
-    if filtered_filename and embeddings:
-        logger.info(f"Writing filtered embeddings to {filtered_filename}")
-        with open(filtered_filename,'w') as fh_filter:
-            no_embeddings = len(embeddings)
-            embedding_size = len(embeddings.itervalues().next())
-            fh_filter.write(f"{no_embeddings:d} {embedding_size:d}\n")
-            for word in embeddings:
-                line = re.sub(" ",u"\xa0",word).encode('utf-8') + " " + \
-                    " ".join(["%.6f"%value for value in embeddings[word]]) + "\n"
-                fh_filter.write(line)
-
-    return embeddings
-
-
-
 
 
 # for the most part, we want to send stored options to the parser when in
