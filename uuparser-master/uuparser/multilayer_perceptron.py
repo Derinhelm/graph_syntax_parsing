@@ -1,10 +1,12 @@
-class MLP(object):
+# TODO: import nn ?
+class MLP(nn.Module):
     def __init__(self, in_dim, hid_dim, hid2_dim, out_dim, activation):
+        super().__init__()
         self.model = torch.nn.Sequential(
                             nn.Linear(in_dim, hid_dim), 
-                            activation(),
+                            activation,
                             nn.Linear(hid_dim, hid2_dim), 
-                            activation(),
+                            activation,
                             nn.Linear(hid2_dim, out_dim)
                            )
         self.activation = activation
