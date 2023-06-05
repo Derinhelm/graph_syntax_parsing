@@ -121,7 +121,6 @@ class ParseForest:
             root.pred_parent_id = None
             root.pred_relation = None
             root.vecs = None
-            root.lstms = None
 
     def __len__(self):
         return len(self.roots)
