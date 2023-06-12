@@ -17,26 +17,17 @@ def run(experiment,options):
 
         paramsfile = os.path.join(experiment.outdir, options.params)
 
-        if not options.continueTraining:
-            logger.debug('Preparing vocab')
-            vocab = utils.get_vocab(experiment.treebanks,"train")
-            logger.debug('Finished collecting vocab')
+        logger.debug('Preparing vocab')
+        vocab = utils.get_vocab(experiment.treebanks,"train")
+        logger.debug('Finished collecting vocab')
 
-            with open(paramsfile, 'wb') as paramsfp:
-                logger.info(f'Saving params to {paramsfile}')
-                pickle.dump((vocab, options), paramsfp)
+        with open(paramsfile, 'wb') as paramsfp:
+            logger.info(f'Saving params to {paramsfile}')
+            pickle.dump((vocab, options), paramsfp)
 
-                logger.debug('Initializing the model')
-                parser = ArcHybridLSTM(vocab, options)
-        else:  #continue
-            if options.continueParams:
-                paramsfile = options.continueParams
-            with open(paramsfile, 'rb') as paramsfp:
-                stored_vocab, stored_options = pickle.load(paramsfp)
-                logger.debug('Initializing the model:')
-                parser = ArcHybridLSTM(stored_vocab, stored_options)
+            logger.debug('Initializing the model')
+            parser = ArcHybridLSTM(vocab, options)
 
-            parser.Load(options.continueModel)
 
         dev_best = [options.epochs,-1.0] # best epoch, best score
 
@@ -209,9 +200,6 @@ each")
     group.add_option("--disable-model-selection", action="store_false",
         help="Disable choosing of model from best/last epoch", dest="model_selection", default=True)
     #TODO: reenable this
-    group.add_option("--continue", dest="continueTraining", action="store_true", default=False)
-    parser.add_option("--continueModel", dest="continueModel", help="Load model file, when continuing to train a previously trained model", metavar="FILE", default=None)
-    parser.add_option("--continueParams", dest="continueParams", help="Load param file, when continuing to train a previously trained model", metavar="FILE", default=None)
     group.add_option("--first-epoch", type="int", metavar="INTEGER", default=1)
     group.add_option("--predict-all-epochs", help='Ensures outfiles contain epoch number from model file',
         action="store_true", default=False)

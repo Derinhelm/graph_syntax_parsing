@@ -75,7 +75,7 @@ class ArcHybridLSTM:
 
 
         #scores, unlabeled scores
-        scrs, uscrs = routput.value(), output.value()
+        scrs, uscrs = routput, output
 
         #transition conditions
         left_arc_conditions = len(stack) > 0
@@ -117,11 +117,22 @@ class ArcHybridLSTM:
 
 
     def Save(self, filename):
-        logger.info(f'Saving model to {filename}')
+        unlab_filename = filename + 'unlab'
+        lab_filename = filename + 'lab'
+        logger.info(f'Saving unlabeled model to {unlab_filename}')
+        torch.save(unlabeled_MLP.state_dict(), PATH)
+        logger.info(f'Saving labeled model to {lab_filename}')
+        torch.save(labeled_MLP.state_dict(), PATH)
         self.model.save(filename)
 
     def Load(self, filename):
-        logger.info(f'Loading model from {filename}')
+        unlab_filename = filename + 'unlab'
+        lab_filename = filename + 'lab'
+        logger.info(f'Loading unlabeled model from {unlab_filename}')
+
+        logger.info(f'Loading labeled model from {lab_filename}')
+
+
         self.model.populate(filename)
 
 
@@ -371,10 +382,10 @@ class ArcHybridLSTM:
 
             #footnote 8 in Eli's original paper
             if len(errs) > 50: # or True:
-                eerrs = torch.sum(errs) 
-                scalar_loss = eerrs.scalar_value() #forward
+                self.labeled_optimizer.zero_grad()
+                self.unlabeled_optimizer.zero_grad()
+                eerrs = torch.sum(torch.tensor(errs, requires_grad=True))
                 eerrs.backward()
-                #self.trainer.update()
                 self.labeled_optimizer.step() # TODO Какой из оптимизаторов ???
                 self.unlabeled_optimizer.step()
                 errs = []
@@ -383,17 +394,15 @@ class ArcHybridLSTM:
                 #self.feature_extractor.Init(options)
 
         if len(errs) > 0:
-            eerrs = torch.sum(errs) 
-            eerrs.scalar_value()
+            self.labeled_optimizer.zero_grad()
+            self.unlabeled_optimizer.zero_grad()
+            eerrs = torch.sum(torch.tensor(errs, requires_grad=True))
             eerrs.backward()
-            #self.trainer.update()
             self.labeled_optimizer.step() # TODO Какой из оптимизаторов ???
             self.unlabeled_optimizer.step()
-
             errs = []
             lerrs = []
 
 
-        self.trainer.update()
         logger.info(f"Loss: {mloss/iSentence}")
         logger.info(f"Total Training Time: {time.time()-beg:.2g}s")
