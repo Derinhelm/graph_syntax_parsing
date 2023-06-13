@@ -117,24 +117,12 @@ class ArcHybridLSTM:
 
 
     def Save(self, filename):
-        unlab_filename = filename + 'unlab'
-        lab_filename = filename + 'lab'
-        logger.info(f'Saving unlabeled model to {unlab_filename}')
-        torch.save(unlabeled_MLP.state_dict(), PATH)
-        logger.info(f'Saving labeled model to {lab_filename}')
-        torch.save(labeled_MLP.state_dict(), PATH)
-        self.model.save(filename)
-
-    def Load(self, filename):
-        unlab_filename = filename + 'unlab'
-        lab_filename = filename + 'lab'
-        logger.info(f'Loading unlabeled model from {unlab_filename}')
-
-        logger.info(f'Loading labeled model from {lab_filename}')
-
-
-        self.model.populate(filename)
-
+        unlab_path = filename + 'unlab'
+        lab_path = filename + 'lab'
+        logger.info(f'Saving unlabeled model to {unlab_path}')
+        torch.save(self.unlabeled_MLP.state_dict(), unlab_path)
+        logger.info(f'Saving labeled model to {lab_path}')
+        torch.save(self.labeled_MLP.state_dict(), lab_path)
 
     def apply_transition(self,best,stack,buf,hoffset):
         if best[1] == SHIFT:
