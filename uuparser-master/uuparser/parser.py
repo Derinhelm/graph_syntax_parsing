@@ -13,19 +13,12 @@ def run(experiment,options):
     from uuparser.arc_hybrid import ArcHybridLSTM
     #logger.info('Working with a transition-based parser')
 
-
-    paramsfile = os.path.join(experiment.outdir, options.params)
-
     logger.debug('Preparing vocab')
     vocab = utils.get_vocab(experiment.treebanks,"train")
     logger.debug('Finished collecting vocab')
 
-    with open(paramsfile, 'wb') as paramsfp:
-            logger.info(f'Saving params to {paramsfile}')
-            pickle.dump((vocab, options), paramsfp)
-
-            logger.debug('Initializing the model')
-            parser = ArcHybridLSTM(vocab, options)
+    logger.debug('Initializing the model')
+    parser = ArcHybridLSTM(vocab, options)
 
 
     dev_best = [options.epochs,-1.0] # best epoch, best score
@@ -79,11 +72,10 @@ def run(experiment,options):
                     fh.write(f"Best dev score {dev_best[1]} at epoch {dev_best[0]:d}\n")
                 else:
                     fh.write(f"Best mean dev score {dev_best[1]} at epoch {dev_best[0]:d}\n")
-            
-            # evaluation for the epoche
-        ts = time.time()
 
-        pred = list(parser.Predict(experiment.treebanks,"test",stored_opt))
+
+        ts = time.time()
+        pred = list(parser.Predict(experiment.treebanks,"test",options))
         utils.write_conll_multiling(pred,experiment.treebanks)
 
         te = time.time()
@@ -141,7 +133,6 @@ def main():
         help="Directory with gold UD test files (default is same as testdir)")
     parser.add_option("--modeldir", metavar="PATH",
         help='Directory where models will be saved, defaults to same as --outdir if not specified')
-    parser.add_option("--params", metavar="FILE", default="params.pickle", help="Parameters file")
     parser.add_option("--model", metavar="FILE", default="barchybrid.model",
         help="Load/Save model file")
 
