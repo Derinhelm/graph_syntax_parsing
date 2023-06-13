@@ -13,15 +13,14 @@ def run(experiment,options):
     from uuparser.arc_hybrid import ArcHybridLSTM
     #logger.info('Working with a transition-based parser')
 
-    if not options.predict: # training
 
-        paramsfile = os.path.join(experiment.outdir, options.params)
+    paramsfile = os.path.join(experiment.outdir, options.params)
 
-        logger.debug('Preparing vocab')
-        vocab = utils.get_vocab(experiment.treebanks,"train")
-        logger.debug('Finished collecting vocab')
+    logger.debug('Preparing vocab')
+    vocab = utils.get_vocab(experiment.treebanks,"train")
+    logger.debug('Finished collecting vocab')
 
-        with open(paramsfile, 'wb') as paramsfp:
+    with open(paramsfile, 'wb') as paramsfp:
             logger.info(f'Saving params to {paramsfile}')
             pickle.dump((vocab, options), paramsfp)
 
@@ -29,100 +28,74 @@ def run(experiment,options):
             parser = ArcHybridLSTM(vocab, options)
 
 
-        dev_best = [options.epochs,-1.0] # best epoch, best score
+    dev_best = [options.epochs,-1.0] # best epoch, best score
 
-        for epoch in range(options.first_epoch, options.epochs+1):
+    for epoch in range(options.first_epoch, options.epochs+1):
+        # Training
+        logger.info(f'Starting epoch {epoch} (training)')
+        traindata = list(utils.read_conll_dir(experiment.treebanks, "train", options.max_sentences))
+        parser.Train(traindata,options)
+        logger.info(f'Finished epoch {epoch} (training)')
 
-            logger.info(f'Starting epoch {epoch}')
-            traindata = list(utils.read_conll_dir(experiment.treebanks, "train", options.max_sentences))
-            parser.Train(traindata,options)
-            logger.info(f'Finished epoch {epoch}')
+        model_file = os.path.join(experiment.outdir, options.model + str(epoch))
+        parser.Save(model_file)
 
-            model_file = os.path.join(experiment.outdir, options.model + str(epoch))
-            parser.Save(model_file)
+        # not all treebanks necessarily have dev data
+        pred_treebanks = [treebank for treebank in experiment.treebanks if treebank.pred_dev]
+        if pred_treebanks:
+                for treebank in pred_treebanks:
+                    treebank.outfilename = os.path.join(treebank.outdir, 'dev_epoch_' + str(epoch) + '.conllu')
+                    logger.info(f"Predicting on dev data for {treebank.name}")
+                pred = list(parser.Predict(pred_treebanks,"dev",options))
+                utils.write_conll_multiling(pred,pred_treebanks)
 
-            if options.pred_dev: # use the model to predict on dev data
-
-                # not all treebanks necessarily have dev data
-                pred_treebanks = [treebank for treebank in experiment.treebanks if treebank.pred_dev]
-                if pred_treebanks:
+                if options.pred_eval: # evaluate the prediction against gold data
+                    mean_score = 0.0
                     for treebank in pred_treebanks:
-                        treebank.outfilename = os.path.join(treebank.outdir, 'dev_epoch_' + str(epoch) + '.conllu')
-                        logger.info(f"Predicting on dev data for {treebank.name}")
-                    pred = list(parser.Predict(pred_treebanks,"dev",options))
-                    utils.write_conll_multiling(pred,pred_treebanks)
-
-                    if options.pred_eval: # evaluate the prediction against gold data
-                        mean_score = 0.0
-                        for treebank in pred_treebanks:
-                            score = utils.evaluate(treebank.dev_gold,treebank.outfilename,options.conllu)
-                            logger.info(f"Dev score {score:.2f} at epoch {epoch:d} for {treebank.name}")
-                            mean_score += score
-                        if len(pred_treebanks) > 1: # multiling case
-                            mean_score = mean_score/len(pred_treebanks)
-                            logger.info(f"Mean dev score {mean_score:.2f} at epoch {epoch:d}")
-                        if options.model_selection:
-                            if mean_score > dev_best[1]:
-                                dev_best = [epoch,mean_score] # update best dev score
-                            # hack to printthe word "mean" if the dev score is an average
-                            mean_string = "mean " if len(pred_treebanks) > 1 else ""
-                            logger.info(f"Best {mean_string}dev score {dev_best[1]:.2f} at epoch {dev_best[0]:d}")
+                        score = utils.evaluate(treebank.dev_gold,treebank.outfilename,options.conllu)
+                        logger.info(f"Dev score {score:.2f} at epoch {epoch:d} for {treebank.name}")
+                        mean_score += score
+                    if len(pred_treebanks) > 1: # multiling case
+                        mean_score = mean_score/len(pred_treebanks)
+                        logger.info(f"Mean dev score {mean_score:.2f} at epoch {epoch:d}")
+                    if options.model_selection:
+                        if mean_score > dev_best[1]:
+                            dev_best = [epoch,mean_score] # update best dev score
+                        # hack to printthe word "mean" if the dev score is an average
+                        mean_string = "mean " if len(pred_treebanks) > 1 else ""
+                        logger.info(f"Best {mean_string}dev score {dev_best[1]:.2f} at epoch {dev_best[0]:d}")
 
 
             # at the last epoch choose which model to copy to barchybrid.model
-            if epoch == options.epochs:
-                bestmodel_file = os.path.join(experiment.outdir,"barchybrid.model" + str(dev_best[0]))
-                model_file = os.path.join(experiment.outdir,"barchybrid.model")
-                logger.info(f"Copying {bestmodel_file} to {model_file}")
-                copyfile(bestmodel_file,model_file)
-                best_dev_file = os.path.join(experiment.outdir,"best_dev_epoch.txt")
-                with open(best_dev_file, 'w') as fh:
-                    logger.info(f"Writing best scores to: {best_dev_file}")
-                    if len(experiment.treebanks) == 1:
-                        fh.write(f"Best dev score {dev_best[1]} at epoch {dev_best[0]:d}\n")
-                    else:
-                        fh.write(f"Best mean dev score {dev_best[1]} at epoch {dev_best[0]:d}\n")
+        if epoch == options.epochs:
+            bestmodel_file = os.path.join(experiment.outdir,"barchybrid.model" + str(dev_best[0]))
+            model_file = os.path.join(experiment.outdir,"barchybrid.model")
+            logger.info(f"Copying {bestmodel_file} to {model_file}")
+            copyfile(bestmodel_file,model_file)
+            best_dev_file = os.path.join(experiment.outdir,"best_dev_epoch.txt")
+            with open(best_dev_file, 'w') as fh:
+                logger.info(f"Writing best scores to: {best_dev_file}")
+                if len(experiment.treebanks) == 1:
+                    fh.write(f"Best dev score {dev_best[1]} at epoch {dev_best[0]:d}\n")
+                else:
+                    fh.write(f"Best mean dev score {dev_best[1]} at epoch {dev_best[0]:d}\n")
+            
+            # evaluation for the epoche
+        ts = time.time()
 
-    else: #if predict - so
+        pred = list(parser.Predict(experiment.treebanks,"test",stored_opt))
+        utils.write_conll_multiling(pred,experiment.treebanks)
 
-        params = os.path.join(experiment.modeldir,options.params)
-        logger.info(f'Reading params from {params}')
-        with open(params, 'rb') as paramsfp:
-            stored_vocab, stored_opt = pickle.load(paramsfp)
+        te = time.time()
 
-            # we need to update/add certain options based on new user input
-            utils.fix_stored_options(stored_opt,options)
-
-            parser = ArcHybridLSTM(stored_vocab, stored_opt)
-            model = os.path.join(experiment.modeldir, options.model)
-            parser.Load(model)
-
-            ts = time.time()
-
+        if options.pred_eval:
             for treebank in experiment.treebanks:
-                if options.predict_all_epochs: # name outfile after epoch number in model file
-                    try:
-                        m = re.search('(\d+)$',options.model)
-                        epoch = m.group(1)
-                        treebank.outfilename = f'dev_epoch_{epoch}.conllu'
-                    except AttributeError:
-                        raise Exception("No epoch number found in model file (e.g. barchybrid.model22)")
-                if not treebank.outfilename:
-                    treebank.outfilename = 'out' + ('.conll' if not options.conllu else '.conllu')
-                treebank.outfilename = os.path.join(treebank.outdir, treebank.outfilename)
+                logger.debug(f"Evaluating on {treebank.name}")
+                score = utils.evaluate(treebank.test_gold,treebank.outfilename,options.conllu)
+                logger.info(f"Obtained LAS F1 score of {score:.2f} on {treebank.name}")
 
-            pred = list(parser.Predict(experiment.treebanks,"test",stored_opt))
-            utils.write_conll_multiling(pred,experiment.treebanks)
+        logger.debug('Finished predicting')
 
-            te = time.time()
-
-            if options.pred_eval:
-                for treebank in experiment.treebanks:
-                    logger.debug(f"Evaluating on {treebank.name}")
-                    score = utils.evaluate(treebank.test_gold,treebank.outfilename,options.conllu)
-                    logger.info(f"Obtained LAS F1 score of {score:.2f} on {treebank.name}")
-
-            logger.debug('Finished predicting')
 
 
 def setup_logging(options):
