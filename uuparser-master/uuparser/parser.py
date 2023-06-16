@@ -7,18 +7,31 @@ from shutil import copyfile
 
 from uuparser import utils
 
+def evaluate_uas(sentence_descr):
+    #sentence_descr is a list, in which elements 0, 1, 2 are auxiliary
+    right_parent_tokens = 0
+    for token in sentence_descr[3:]:
+        if isinstance(token, ConllEntry): # TODO: изучить случаи, когда не ConllEntry - ошибка считывания?
+          if token.pred_parent_id == token.parent_id:
+              right_parent_tokens += 1
+        #print("pred_parent:", token.pred_parent_id, "real_parent:", token.parent_id)
+    uas = right_parent_tokens / (len(sentence_descr) - 3)
+    return uas
 
-def run(experiment,options):
+def evaluate_uas_epoche(sentence_list):
+    summ_uas = 0
+    for sent in sentence_list:
+        summ_uas += evaluate_uas(sent)
+    return summ_uas / len(sentence_list)
+
+def run(traindata, valdata, testdata, options):
     
     from uuparser.arc_hybrid import ArcHybridLSTM
     #logger.info('Working with a transition-based parser')
 
-    logger.debug('Preparing vocab')
-    vocab = utils.get_vocab(experiment.treebanks,"train")
-    logger.debug('Finished collecting vocab')
-
+    irels = utils.get_irels(traindata)
     logger.debug('Initializing the model')
-    parser = ArcHybridLSTM(vocab, options)
+    parser = ArcHybridLSTM(irels, options)
 
 
     dev_best = [options.epochs,-1.0] # best epoch, best score
@@ -26,41 +39,25 @@ def run(experiment,options):
     for epoch in range(options.first_epoch, options.epochs+1):
         # Training
         logger.info(f'Starting epoch {epoch} (training)')
-        traindata = list(utils.read_conll_dir(experiment.treebanks, "train", options.max_sentences))
         parser.Train(traindata,options)
         logger.info(f'Finished epoch {epoch} (training)')
 
-        model_file = os.path.join(experiment.outdir, options.model + str(epoch))
+        model_file = os.path.join(options.outdir, options.model + str(epoch))
         parser.Save(model_file)
 
-        # not all treebanks necessarily have dev data
-        pred_treebanks = [treebank for treebank in experiment.treebanks if treebank.pred_dev]
-        if pred_treebanks:
-                for treebank in pred_treebanks:
-                    treebank.outfilename = os.path.join(treebank.outdir, 'dev_epoch_' + str(epoch) + '.conllu')
-                    logger.info(f"Predicting on dev data for {treebank.name}")
-                pred = list(parser.Predict(pred_treebanks,"dev",options))
-                utils.write_conll_multiling(pred,pred_treebanks)
+        logger.info(f"Predicting on dev data")
+        dev_pred = list(parser.Predict(valdata,"dev",options)) # TODO
+        mean_dev_score = evaluate_uas_epoche(dev_pred) # [float]
+        logger.info(f"Dev score {mean_dev_score:.2f} at epoch {epoch:d}")
+        print(f"Dev score {mean_dev_score:.2f} at epoch {epoch:d}")
 
-                if options.pred_eval: # evaluate the prediction against gold data
-                    mean_score = 0.0
-                    for treebank in pred_treebanks:
-                        score = utils.evaluate(treebank.dev_gold,treebank.outfilename,options.conllu)
-                        logger.info(f"Dev score {score:.2f} at epoch {epoch:d} for {treebank.name}")
-                        mean_score += score
-                    if len(pred_treebanks) > 1: # multiling case
-                        mean_score = mean_score/len(pred_treebanks)
-                        logger.info(f"Mean dev score {mean_score:.2f} at epoch {epoch:d}")
-                    if options.model_selection:
-                        if mean_score > dev_best[1]:
-                            dev_best = [epoch,mean_score] # update best dev score
-                        # hack to printthe word "mean" if the dev score is an average
-                        mean_string = "mean " if len(pred_treebanks) > 1 else ""
-                        logger.info(f"Best {mean_string}dev score {dev_best[1]:.2f} at epoch {dev_best[0]:d}")
+        if mean_dev_score > dev_best[1]:
+            dev_best = [epoch,mean_dev_score] # update best dev score
 
-
+        # TODO: Загрузка наилучшей модели
+        # TODO: Вычисление результата на test
             # at the last epoch choose which model to copy to barchybrid.model
-        if epoch == options.epochs:
+        '''if epoch == options.epochs:
             bestmodel_file = os.path.join(experiment.outdir,"barchybrid.model" + str(dev_best[0]))
             model_file = os.path.join(experiment.outdir,"barchybrid.model")
             logger.info(f"Copying {bestmodel_file} to {model_file}")
@@ -76,16 +73,14 @@ def run(experiment,options):
 
         ts = time.time()
         pred = list(parser.Predict(experiment.treebanks,"test",options))
-        utils.write_conll_multiling(pred,experiment.treebanks)
 
         te = time.time()
 
         if options.pred_eval:
             for treebank in experiment.treebanks:
                 logger.debug(f"Evaluating on {treebank.name}")
-                score = utils.evaluate(treebank.test_gold,treebank.outfilename,options.conllu)
                 logger.info(f"Obtained LAS F1 score of {score:.2f} on {treebank.name}")
-
+'''
         logger.debug('Finished predicting')
 
 
@@ -232,10 +227,16 @@ each")
     # really important to do this before anything else to make experiments reproducible
     utils.set_seeds(options)
 
-    om = OptionsManager(options)
-    experiments = om.create_experiment_list(options) # list of namedtuples
-    for experiment in experiments:
-        run(experiment,options)
+    om = OptionsManager(options) # TODO: Now OptionsManager is used only for checking within it.
+    # TODO: Create generating path from options
+    train_dir = 'sample_data/UD_Russian-SynTagRus/ru_syntagrus-ud-train.conllu'
+    val_dir = 'sample_data/UD_Russian-SynTagRus/ru_syntagrus-ud-val.conllu'
+    test_dir = 'sample_data/UD_Russian-SynTagRus/ru_syntagrus-ud-test.conllu'
+
+    train = list(read_conll(train_dir, maxSize=options.max_sentences))
+    val = list(read_conll(val_dir, maxSize=options.max_sentences))
+    test = list(read_conll(test_dir, maxSize=options.max_sentences))
+    run(train, val, test, options)
 
 if __name__ == '__main__':
     main()

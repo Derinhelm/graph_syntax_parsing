@@ -17,7 +17,7 @@ import tqdm
 from uuparser import utils
 
 class ArcHybridLSTM:
-    def __init__(self, vocab, options):
+    def __init__(self, irels, options):
 
         # import here so we don't load Dynet if just running parser.py --help for example
         from uuparser.multilayer_perceptron import MLP
@@ -25,7 +25,7 @@ class ArcHybridLSTM:
         global LEFT_ARC, RIGHT_ARC, SHIFT, SWAP
         LEFT_ARC, RIGHT_ARC, SHIFT, SWAP = 0,1,2,3
 
-        self.irels, treebanks = vocab
+        self.irels = irels
 
         self.activation = options.activation
 
@@ -107,8 +107,8 @@ class ArcHybridLSTM:
         else:
             s1,r1 = max(zip(scrs[2::2],self.irels))
             s2,r2 = max(zip(scrs[3::2],self.irels))
-            s1 += uscrs2
-            s2 += uscrs3
+            s1 = s1 + uscrs2
+            s2 = s2 + uscrs3
             ret = [ [ (r1, LEFT_ARC, s1) ] if left_arc_conditions else [],
                    [ (r2, RIGHT_ARC, s2) ] if right_arc_conditions else [],
                    [ (None, SHIFT, scrs[0] + uscrs0) ] if shift_conditions else [] ,
@@ -197,10 +197,8 @@ class ArcHybridLSTM:
             if s0[0].id in s0[0].parent_entry.rdeps:
                 s0[0].parent_entry.rdeps.remove(s0[0].id)
 
-    def Predict(self, treebanks, datasplit, options):
+    def Predict(self, data, datasplit, options):
         reached_max_swap = 0
-
-        data = utils.read_conll_dir(treebanks,datasplit)
 
         pbar = tqdm.tqdm(
             data,

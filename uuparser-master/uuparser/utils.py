@@ -1,7 +1,6 @@
 from collections import defaultdict, Counter
 import re
 import os,time
-from itertools import chain
 from operator import itemgetter
 import random
 import json
@@ -54,62 +53,6 @@ class ConllEntry:
                   self.deps, self.misc]
         return '\t'.join(['_' if v is None else v for v in values])
 
-
-class Treebank(object):
-    def __init__(self,trainfile,devfile,testfile):
-        self.name = 'noname'
-        self.trainfile = trainfile
-        self.devfile = devfile
-        self.dev_gold = devfile
-        self.test_gold = testfile
-        self.testfile = testfile
-        self.outfilename = None
-        self.proxy_tbank = None
-
-
-class UDtreebank(Treebank):
-    def __init__(self, treebank_info, options):
-        """
-        Read treebank info to a treebank object
-        """
-        self.name, self.iso_id = treebank_info
-        if not options.shared_task:
-
-            if options.datadir:
-                data_path = os.path.join(options.datadir,self.name)
-            else:
-                data_path = os.path.join(options.testdir,self.name)
-
-            if options.testdir:
-                test_path = os.path.join(options.testdir,self.name)
-            else:
-                test_path = data_path
-
-            if options.golddir:
-                gold_path = os.path.join(options.golddir,self.name)
-            else:
-                gold_path = test_path
-
-            self.trainfile = os.path.join(data_path, self.iso_id + "-ud-train.conllu")
-            self.devfile = os.path.join(test_path, self.iso_id + "-ud-dev.conllu")
-            self.testfile = os.path.join(test_path, self.iso_id + "-ud-test.conllu")
-            self.test_gold = os.path.join(gold_path, self.iso_id + "-ud-test.conllu")
-            self.dev_gold = os.path.join(gold_path, self.iso_id + "-ud-dev.conllu")
-        else:
-            if not options.predict:
-                self.trainfile = os.path.join(options.datadir, self.iso_id + ".conllu")
-            #self.testfile = os.path.join(options.testdir, self.iso_id + "-udpipe.conllu")
-            #self.testfile = os.path.join(options.testdir, self.iso_id + ".conllu")
-            self.testfile = os.path.join(options.testdir, self.iso_id + ".txt")
-            if options.golddir:
-                self.test_gold = os.path.join(options.golddir, self.iso_id + ".conllu")
-            else:
-                self.test_gold = self.testfile
-            self.devfile = self.testfile
-            self.dev_gold = self.test_gold
-        self.outfilename = self.iso_id + '.conllu'
-
-
 class ParseForest:
     def __init__(self, sentence):
         self.roots = list(sentence)
@@ -152,48 +95,21 @@ def isProj(sentence):
     return len(forest.roots) == 1
 
 
-def get_vocab(treebanks,datasplit):
+def get_irels(data):
     """
     Collect frequencies of words, cpos, pos and deprels + languages.
     """
 
-    data = read_conll_dir(treebanks,datasplit)
-
     # could use sets directly rather than counters for most of these,
     # but having the counts might be useful in the future or possibly for debugging etc
     relCount = Counter()
-    tbankCount = Counter() # note that one language can have several treebanks
-    langCount = Counter()
 
     for sentence in data:
         for node in sentence:
             if isinstance(node, ConllEntry):
                 relCount.update([node.relation])
-                treebank_id = node.treebank_id
-                tbankCount.update([treebank_id])
 
-    return (list(relCount.keys()), list(tbankCount.keys()))
-
-
-def get_all_treebanks(options):
-
-    iso_dict = {"UD_Russian-SynTagRus": "ru_syntagrus"} #TODO
-
-    treebank_metadata = iso_dict.items()
-
-    json_treebanks = [UDtreebank(ele, options) for ele in treebank_metadata]
-
-    return json_treebanks
-
-
-def read_conll_dir(treebanks,filetype,maxSize=-1):
-    logger.debug("Max size for each corpus: ", maxSize)
-    if filetype == "train":
-        return chain(*(read_conll(treebank.trainfile, treebank.iso_id, treebank.proxy_tbank, maxSize, train=True) for treebank in treebanks))
-    elif filetype == "dev":
-        return chain(*(read_conll(treebank.devfile, treebank.iso_id, treebank.proxy_tbank, train=False) for treebank in treebanks))
-    elif filetype == "test":
-        return chain(*(read_conll(treebank.testfile, treebank.iso_id, treebank.proxy_tbank, train=False) for treebank in treebanks))
+    return list(relCount.keys())
 
 
 def generate_root_token(treebank_id, proxy_tbank):
@@ -289,50 +205,9 @@ def write_conll(fn, conll_gen):
         logger.debug(f"Wrote {sents} sentences")
 
 
-def write_conll_multiling(conll_gen, treebanks):
-    tbank_dict = {treebank.iso_id:treebank for treebank in treebanks}
-    cur_tbank = conll_gen[0][0].treebank_id
-    outfile = tbank_dict[cur_tbank].outfilename
-    fh = open(outfile,'w',encoding='utf-8')
-    logger.info(f"Writing to {outfile}")
-    for sentence in conll_gen:
-        if cur_tbank != sentence[0].treebank_id:
-            fh.close()
-            cur_tbank = sentence[0].treebank_id
-            outfile = tbank_dict[cur_tbank].outfilename
-            fh = open(outfile,'w',encoding='utf-8')
-            logger.info(f"Writing to {outfile}")
-        for entry in sentence[1:]:
-            fh.write(str(entry) + '\n')
-        fh.write('\n')
-
-
-def parse_list_arg(l):
-    """Return a list of line values if it's a file or a list of values if it
-    is a string"""
-    if os.path.isfile(l):
-        f = open(l, 'r', encoding='utf-8')
-        return [line.strip("\n").split()[0] for line in f]
-    else:
-        return [el for el in l.split(" ")]
-
-
 numberRegex = re.compile("[0-9]+|[0-9]+\\.[0-9]+|[0-9]+[0-9,]+");
 def normalize(word):
     return 'NUM' if numberRegex.match(word) else word.lower()
-
-
-def evaluate(gold,test,conllu):
-    scoresfile = test + '.txt'
-    logger.info(f"Writing to {scoresfile}")
-    with open(scoresfile, "w") as scoresfile_stream:
-        if not conllu:
-            #os.system('perl src/utils/eval.pl -g ' + gold + ' -s ' + test  + ' > ' + scoresfile + ' &')
-            subprocess.run(["perl", str(UTILS_PATH/"eval.pl"), "-g", gold, "-s", test], stdout=scoresfile_stream, check=True)
-        else:
-            subprocess.run(["python", str(UTILS_PATH/"evaluation_script/conll17_ud_eval.py"), "-v", "-w", str(UTILS_PATH/"evaluation_script/weights.clas"), gold, test], stdout=scoresfile_stream, check=True)
-    score = get_LAS_score(scoresfile,conllu)
-    return score
 
 
 def inorder(sentence):
@@ -359,22 +234,6 @@ def set_seeds(options):
 
 def generate_seed():
     return random.randint(0,10**9) # this range seems to work for Dynet and Python's random function
-
-
-def get_LAS_score(filename, conllu=True):
-    score = None
-    with open(filename,'r',encoding='utf-8') as fh:
-        if conllu:
-            for line in fh:
-                if re.match(r'^LAS',line):
-                    elements = line.split()
-                    score = float(elements[6]) # should extract the F1 score
-        else:
-            las_line = [line for line in fh][0]
-            score = float(las_line.split('=')[1].split()[0])
-
-    return score
-
 
 # for the most part, we want to send stored options to the parser when in
 # --predict mode, however we want to allow some of these to be updated
