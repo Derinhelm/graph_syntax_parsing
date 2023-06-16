@@ -33,7 +33,6 @@ def run(traindata, valdata, testdata, options):
     logger.debug('Initializing the model')
     parser = ArcHybridLSTM(irels, options)
 
-
     dev_best = [options.epochs,-1.0] # best epoch, best score
 
     for epoch in range(options.first_epoch, options.epochs+1):
@@ -42,46 +41,31 @@ def run(traindata, valdata, testdata, options):
         parser.Train(traindata,options)
         logger.info(f'Finished epoch {epoch} (training)')
 
-        model_file = os.path.join(options.outdir, options.model + str(epoch))
-        parser.Save(model_file)
+        parser.Save(epoch)
 
         logger.info(f"Predicting on dev data")
-        dev_pred = list(parser.Predict(valdata,"dev",options)) # TODO
-        mean_dev_score = evaluate_uas_epoche(dev_pred) # [float]
+        dev_pred = list(parser.Predict(valdata,"dev",options))
+        mean_dev_score = evaluate_uas_epoche(dev_pred)
         logger.info(f"Dev score {mean_dev_score:.2f} at epoch {epoch:d}")
         print(f"Dev score {mean_dev_score:.2f} at epoch {epoch:d}")
 
         if mean_dev_score > dev_best[1]:
             dev_best = [epoch,mean_dev_score] # update best dev score
 
-        # TODO: Загрузка наилучшей модели
-        # TODO: Вычисление результата на test
-            # at the last epoch choose which model to copy to barchybrid.model
-        '''if epoch == options.epochs:
-            bestmodel_file = os.path.join(experiment.outdir,"barchybrid.model" + str(dev_best[0]))
-            model_file = os.path.join(experiment.outdir,"barchybrid.model")
-            logger.info(f"Copying {bestmodel_file} to {model_file}")
-            copyfile(bestmodel_file,model_file)
-            best_dev_file = os.path.join(experiment.outdir,"best_dev_epoch.txt")
-            with open(best_dev_file, 'w') as fh:
-                logger.info(f"Writing best scores to: {best_dev_file}")
-                if len(experiment.treebanks) == 1:
-                    fh.write(f"Best dev score {dev_best[1]} at epoch {dev_best[0]:d}\n")
-                else:
-                    fh.write(f"Best mean dev score {dev_best[1]} at epoch {dev_best[0]:d}\n")
+    logger.info(f"Loading best model from epoche{dev_best[0]:d}")
+    # Loading best_models to parser.labeled_MLP and parser.unlabeled_MLP
+    parser.Load(epoch)
+
+    logger.info(f"Predicting on test data")
+
+    test_pred = list(parser.Predict(testdata,"test",options))
+    mean_test_score = evaluate_uas_epoche(test_pred)
+
+    logger.info(f"On test obtained UAS score of {mean_test_score:.2f}")
+    print(f"On test obtained UAS score of {mean_test_score:.2f}")
 
 
-        ts = time.time()
-        pred = list(parser.Predict(experiment.treebanks,"test",options))
-
-        te = time.time()
-
-        if options.pred_eval:
-            for treebank in experiment.treebanks:
-                logger.debug(f"Evaluating on {treebank.name}")
-                logger.info(f"Obtained LAS F1 score of {score:.2f} on {treebank.name}")
-'''
-        logger.debug('Finished predicting')
+    logger.debug('Finished predicting')
 
 
 

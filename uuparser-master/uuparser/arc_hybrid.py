@@ -29,12 +29,15 @@ class ArcHybridLSTM:
 
         self.activation = options.activation
 
+        self.mlp_hidden_dims = options.mlp_hidden_dims
+        self.mlp_hidden2_dims = options.mlp_hidden2_dims
+
         self.mlp_in_dims = 30 # TODO: Create a logical value.
 
-        self.unlabeled_MLP = MLP(self.mlp_in_dims, options.mlp_hidden_dims,
-                                 options.mlp_hidden2_dims, 4, self.activation)
-        self.labeled_MLP = MLP(self.mlp_in_dims, options.mlp_hidden_dims,
-                               options.mlp_hidden2_dims,2*len(self.irels)+2, self.activation)
+        self.unlabeled_MLP = MLP(self.mlp_in_dims, self.mlp_hidden_dims,
+                                 self.mlp_hidden2_dims, 4, self.activation)
+        self.labeled_MLP = MLP(self.mlp_in_dims, self.mlp_hidden_dims,
+                               self.mlp_hidden2_dims,2*len(self.irels)+2, self.activation)
 
 
         self.unlabeled_optimizer = optim.Adam(self.unlabeled_MLP.parameters(), lr=options.learning_rate)
@@ -115,14 +118,29 @@ class ArcHybridLSTM:
                     [ (None, SWAP, scrs[1] + uscrs1) ] if swap_conditions else [] ]
         return ret
 
+    def Load(self, epoch):
+        unlab_path = 'model_unlab' + '_' + str(epoch)
+        lab_path = 'model_lab' + '_' + str(epoch)
 
-    def Save(self, filename):
-        unlab_path = filename + 'unlab'
-        lab_path = filename + 'lab'
+        self.unlabeled_MLP = MLP(self.mlp_in_dims, self.mlp_hidden_dims,
+                                 self.mlp_hidden2_dims, 4, self.activation)
+        self.labeled_MLP = MLP(self.mlp_in_dims, self.mlp_hidden_dims,
+                               self.mlp_hidden2_dims,2*len(self.irels)+2, self.activation)
+
+        unlab_checkpoint = torch.load(unlab_path)
+        self.unlabeled_MLP.load_state_dict(unlab_checkpoint['model_state_dict'])
+
+        lab_checkpoint = torch.load(lab_path)
+        self.labeled_MLP.load_state_dict(lab_checkpoint['model_state_dict'])
+
+
+    def Save(self, epoch):
+        unlab_path = 'model_unlab' + '_' + str(epoch)
+        lab_path = 'model_lab' + '_' + str(epoch)
         logger.info(f'Saving unlabeled model to {unlab_path}')
-        torch.save(self.unlabeled_MLP.state_dict(), unlab_path)
+        torch.save({'epoch': epoch, 'model_state_dict': self.unlabeled_MLP.state_dict()}, unlab_path)
         logger.info(f'Saving labeled model to {lab_path}')
-        torch.save(self.labeled_MLP.state_dict(), lab_path)
+        torch.save({'epoch': epoch, 'model_state_dict': self.labeled_MLP.state_dict()}, lab_path)
 
     def apply_transition(self,best,stack,buf,hoffset):
         if best[1] == SHIFT:
