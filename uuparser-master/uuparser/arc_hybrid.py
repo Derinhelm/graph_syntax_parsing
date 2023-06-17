@@ -16,6 +16,79 @@ import tqdm
 
 from uuparser import utils
 
+from jax.numpy import int32
+from torch_geometric.data import HeteroData
+
+from transformers import AutoTokenizer, BertModel
+import torch
+
+def get_embed(tokenizer, model, word):
+
+    inputs = tokenizer(word, return_tensors="pt")
+    outputs = model(**inputs)
+
+    last_hidden_states = outputs.last_hidden_state[0][0]
+    return last_hidden_states.detach().cpu()
+
+
+def get_embed_for_sentence(sentence):
+    word_embeds = torch.empty((len(sentence), 768))
+    tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
+    model = BertModel.from_pretrained("bert-base-uncased")
+    for i in range(len(sentence)):
+        word_embeds[i] = get_embed(tokenizer, model, sentence[i].form)
+    return word_embeds
+
+def create_stack_edges(stack):
+    if len(stack) == 0:
+        return torch.stack((torch.tensor([], dtype=torch.int32), torch.tensor([], dtype=torch.int32)), dim=0)
+    stack_edges = []
+    if len(stack) == 1:
+        stack_edges.append((stack[0].id - 1, stack[0].id - 1)) # temporary solution
+    else:
+        for i in range(len(stack) - 1): # Represents every two consecutive stack nodes as an edge
+            stack_edges.append((stack[i].id - 1, stack[i + 1].id - 1))
+    stack_edges = tuple(zip(*stack_edges))
+    stack_edges = [torch.tensor(stack_edges[0]), torch.tensor(stack_edges[1])]
+    return torch.stack(stack_edges, dim=0)
+
+def create_buffer_edges(buffer):
+    if len(buffer) == 0:
+        return torch.stack((torch.tensor([], dtype=torch.int32), torch.tensor([], dtype=torch.int32)), dim=0)
+    buffer_edges = []
+    if len(buffer) == 1:
+        buffer_edges.append((buffer[0].id - 1, buffer[0].id - 1)) # temporary solution
+    else:
+        for i in range(len(buffer) - 1): # Represents every two consecutive buffer nodes as an edge
+            buffer_edges.append((buffer[i].id - 1, buffer[i + 1].id - 1))
+    buffer_edges = tuple(zip(*buffer_edges))
+    buffer_edges = [torch.tensor(buffer_edges[0]), torch.tensor(buffer_edges[1])]
+    return torch.stack(buffer_edges, dim=0)
+
+
+def create_graph_edges(sentence):
+    if len(sentence) == 0:
+        return torch.stack((torch.tensor([], dtype=torch.int32), torch.tensor([], dtype=torch.int32)), dim=0)
+    graph_edges = []
+    for node in sentence:
+        if node.parent_id is not None and node.parent_id != 0:
+            graph_edges.append((node.parent_id - 1, node.id - 1))
+    graph_edges = tuple(zip(*graph_edges))
+    graph_edges = [torch.tensor(graph_edges[0]), torch.tensor(graph_edges[1])]
+    return torch.stack(graph_edges, dim=0)
+
+def config_to_graph(sentence, stack, buffer):
+    word_embeds = get_embed_for_sentence(sentence)
+
+    data = HeteroData()
+    data['node']['x'] = word_embeds
+
+    data[('node', 'graph', 'node')].edge_index = create_graph_edges(sentence)
+    print(data[('node', 'graph', 'node')].edge_index)
+    data[('node', 'stack', 'node')].edge_index = create_stack_edges(stack)
+    data[('node', 'buffer', 'node')].edge_index = create_buffer_edges(buffer)
+    return data
+
 class ArcHybridLSTM:
     def __init__(self, irels, options):
 
@@ -29,19 +102,20 @@ class ArcHybridLSTM:
 
         self.activation = options.activation
 
-        self.mlp_hidden_dims = options.mlp_hidden_dims
-        self.mlp_hidden2_dims = options.mlp_hidden2_dims
+        self.hidden_dims = options.mlp_hidden_dims
 
         self.mlp_in_dims = 30 # TODO: Create a logical value.
 
-        self.unlabeled_MLP = MLP(self.mlp_in_dims, self.mlp_hidden_dims,
-                                 self.mlp_hidden2_dims, 4, self.activation)
-        self.labeled_MLP = MLP(self.mlp_in_dims, self.mlp_hidden_dims,
-                               self.mlp_hidden2_dims,2*len(self.irels)+2, self.activation)
+        self.metadata = (['node'], [('node', 'graph', 'node'), ('node', 'stack', 'node'), ('node', 'buffer', 'node')])
+        self.unlabeled_GNN = GNN(hidden_channels=self.hidden_dims, out_channels=4) 
+        self.unlabeled_GNN = to_hetero(self.unlabeled_GNN, self.metadata, aggr='sum')
+        
+        self.labeled_GNN = GNN(hidden_channels=self.hidden_dims, out_channels=2*len(self.irels)+2)
+        self.labeled_GNN = to_hetero(self.labeled_GNN, self.metadata, aggr='sum')
 
 
-        self.unlabeled_optimizer = optim.Adam(self.unlabeled_MLP.parameters(), lr=options.learning_rate)
-        self.labeled_optimizer = optim.Adam(self.labeled_MLP.parameters(), lr=options.learning_rate)
+        self.unlabeled_optimizer = optim.Adam(self.unlabeled_GNN.parameters(), lr=options.learning_rate)
+        self.labeled_optimizer = optim.Adam(self.labeled_GNN.parameters(), lr=options.learning_rate)
 
         self.oracle = options.oracle
 
@@ -50,16 +124,7 @@ class ArcHybridLSTM:
         self.rlFlag = options.rlFlag
         self.k = options.k
 
-    def create_configuration_representation(self, stack, buf): 
-        # TODO: add sentence for representation creating
-        #topStack = [ stack.roots[-i-1].lstms if len(stack) > i else [] for i in range(self.k) ]
-        #topBuffer = [ buf.roots[i].lstms if len(buf) > i else [] for i in range(1) ]
-
-        #input = dy.concatenate(list(chain(*(topStack + topBuffer))))
-
-        return torch.randn(self.mlp_in_dims)
-
-    def __evaluate(self, stack, buf, train):
+    def __evaluate(self, stack, buf, sentence, train):
         """
         ret = [left arc,
                right arc
@@ -72,9 +137,9 @@ class ArcHybridLSTM:
         expression used in the loss, the first is used in rest of training
         """
 
-        input = self.create_configuration_representation(stack, buf)
-        output = self.unlabeled_MLP(input)
-        routput = self.labeled_MLP(input)
+        graph = config_to_graph(sentence, stack.roots, buf.roots)
+        output = self.unlabeled_GNN(graph.x_dict, graph.edge_index_dict)
+        routput = self.labeled_GNN(graph.x_dict, graph.edge_index_dict)
 
 
         #scores, unlabeled scores
@@ -122,25 +187,27 @@ class ArcHybridLSTM:
         unlab_path = 'model_unlab' + '_' + str(epoch)
         lab_path = 'model_lab' + '_' + str(epoch)
 
-        self.unlabeled_MLP = MLP(self.mlp_in_dims, self.mlp_hidden_dims,
-                                 self.mlp_hidden2_dims, 4, self.activation)
-        self.labeled_MLP = MLP(self.mlp_in_dims, self.mlp_hidden_dims,
-                               self.mlp_hidden2_dims,2*len(self.irels)+2, self.activation)
+        self.unlabeled_GNN = GNN(hidden_channels=self.hidden_dims, out_channels=4) 
+        self.labeled_GNN = GNN(hidden_channels=self.hidden_dims, out_channels=2*len(self.irels)+2)
 
         unlab_checkpoint = torch.load(unlab_path)
-        self.unlabeled_MLP.load_state_dict(unlab_checkpoint['model_state_dict'])
+        self.unlabeled_GNN.load_state_dict(unlab_checkpoint['model_state_dict'])
+
+
+        self.unlabeled_GNN = to_hetero(self.unlabeled_GNN, self.metadata, aggr='sum')
+        self.labeled_GNN = to_hetero(self.labeled_GNN, self.metadata, aggr='sum')
 
         lab_checkpoint = torch.load(lab_path)
-        self.labeled_MLP.load_state_dict(lab_checkpoint['model_state_dict'])
+        self.labeled_GNN.load_state_dict(lab_checkpoint['model_state_dict'])
 
 
     def Save(self, epoch):
         unlab_path = 'model_unlab' + '_' + str(epoch)
         lab_path = 'model_lab' + '_' + str(epoch)
         logger.info(f'Saving unlabeled model to {unlab_path}')
-        torch.save({'epoch': epoch, 'model_state_dict': self.unlabeled_MLP.state_dict()}, unlab_path)
+        torch.save({'epoch': epoch, 'model_state_dict': self.unlabeled_GNN.state_dict()}, unlab_path)
         logger.info(f'Saving labeled model to {lab_path}')
-        torch.save({'epoch': epoch, 'model_state_dict': self.labeled_MLP.state_dict()}, lab_path)
+        torch.save({'epoch': epoch, 'model_state_dict': self.labeled_GNN.state_dict()}, lab_path)
 
     def apply_transition(self,best,stack,buf,hoffset):
         if best[1] == SHIFT:
@@ -248,7 +315,7 @@ class ArcHybridLSTM:
 
 
             while not (len(buf) == 1 and len(stack) == 0):
-                scores = self.__evaluate(stack, buf, False)
+                scores = self.__evaluate(stack, buf, conll_sentence, False)
                 best = max(chain(*(scores if iSwap < max_swap else scores[:3] )), key = itemgetter(2) )
                 if iSwap == max_swap and not reached_swap_for_i_sentence:
                     reached_max_swap += 1
@@ -326,7 +393,7 @@ class ArcHybridLSTM:
                 root.relation = root.relation if root.relation in self.irels else 'runk'
 
             while not (len(buf) == 1 and len(stack) == 0):
-                scores = self.__evaluate(stack, buf, True)
+                scores = self.__evaluate(stack, buf, conll_sentence, True)
 
                 #to ensure that we have at least one wrong operation
                 scores.append([(None, 4, ninf ,None)])

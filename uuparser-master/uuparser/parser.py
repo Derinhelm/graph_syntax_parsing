@@ -53,7 +53,7 @@ def run(traindata, valdata, testdata, options):
             dev_best = [epoch,mean_dev_score] # update best dev score
 
     logger.info(f"Loading best model from epoche{dev_best[0]:d}")
-    # Loading best_models to parser.labeled_MLP and parser.unlabeled_MLP
+    # Loading best_models to parser.labeled_GNN and parser.unlabeled_GNN
     parser.Load(epoch)
 
     logger.info(f"Predicting on test data")
