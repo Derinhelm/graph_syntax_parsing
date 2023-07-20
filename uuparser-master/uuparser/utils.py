@@ -226,7 +226,7 @@ def inorder(sentence):
     return inorder_helper(sentence,queue[0].id)
 
 
-def set_seeds(options):
+def set_seeds():
     python_seed = 1
     logger.debug("Using default Python seed")
     random.seed(python_seed)
@@ -234,21 +234,6 @@ def set_seeds(options):
 
 def generate_seed():
     return random.randint(0,10**9) # this range seems to work for Dynet and Python's random function
-
-# for the most part, we want to send stored options to the parser when in
-# --predict mode, however we want to allow some of these to be updated
-# based on the command line options specified by the user at predict time
-def fix_stored_options(stored_opt,options):
-
-    stored_opt.predict = True
-    # force language embedding needs to be passed to parser!
-    stored_opt.forced_tbank_emb = options.forced_tbank_emb
-    stored_opt.ext_emb_dir = options.ext_emb_dir
-    stored_opt.ext_word_emb_file = options.ext_word_emb_file
-    stored_opt.ext_char_emb_file = options.ext_char_emb_file
-    stored_opt.max_ext_emb = options.max_ext_emb
-    stored_opt.shared_task = options.shared_task
-
 
 class TqdmCompatibleStream:
     """Wrapper around a file-like object (usually stderr) that will call

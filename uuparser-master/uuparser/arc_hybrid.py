@@ -291,7 +291,7 @@ class ArcHybridLSTM:
             unit="sentences",
             mininterval=1.0,
             leave=False,
-            disable=options.quiet,
+            disable=False,
         )
 
         for iSentence, osentence in enumerate(pbar,1):
@@ -359,7 +359,7 @@ class ArcHybridLSTM:
             unit="sentences",
             mininterval=1.0,
             leave=False,
-            disable=options.quiet,
+            disable=False,
         )
 
         for iSentence, sentence in enumerate(pbar,1):
