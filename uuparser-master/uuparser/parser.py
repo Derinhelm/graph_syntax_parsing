@@ -211,8 +211,6 @@ each")
     # really important to do this before anything else to make experiments reproducible
     utils.set_seeds(options)
 
-    om = OptionsManager(options) # TODO: Now OptionsManager is used only for checking within it.
-    # TODO: Create generating path from options
     train_dir = 'sample_data/UD_Russian-SynTagRus/ru_syntagrus-ud-train.conllu'
     val_dir = 'sample_data/UD_Russian-SynTagRus/ru_syntagrus-ud-val.conllu'
     test_dir = 'sample_data/UD_Russian-SynTagRus/ru_syntagrus-ud-test.conllu'
