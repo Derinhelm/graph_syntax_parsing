@@ -1,5 +1,3 @@
-from optparse import OptionParser, OptionGroup
-from uuparser.options_manager import OptionsManager
 import pickle, os, time, sys, copy, itertools, re, random
 
 from loguru import logger
@@ -33,9 +31,9 @@ def run(traindata, valdata, testdata, options):
     logger.debug('Initializing the model')
     parser = ArcHybridLSTM(irels, options)
 
-    dev_best = [options.epochs,-1.0] # best epoch, best score
+    dev_best = [options["epochs"],-1.0] # best epoch, best score
 
-    for epoch in range(options.first_epoch, options.epochs+1):
+    for epoch in range(options["first_epoch"], options["epochs"] + 1):
         # Training
         logger.info(f'Starting epoch {epoch} (training)')
         parser.Train(traindata,options)
@@ -95,33 +93,18 @@ def setup_logging():
 
 
 def main():
-    #group = OptionGroup(parser, "Experiment options") parser удалила
-    group.add_option("--epochs", type="int", metavar="INTEGER", default=30,
-        help='Number of epochs')
-    group.add_option("--max-sentences", type="int", metavar="INTEGER",
-        help='Only train using n sentences per epoch', default=-1) # Надо max_sentences
-    group.add_option("--first-epoch", type="int", metavar="INTEGER", default=1) # first_epoch
-
-    group = OptionGroup(parser, "Transition-based parser options")
-    group.add_option("--disable-oracle", action="store_false", dest="oracle", default=True,
-        help='Use the static oracle instead of the dynamic oracle') # oracle
-    group.add_option("--disable-head", action="store_false", dest="headFlag", default=True,
-        help='Disable using the head of word vectors fed to the MLP') # headFlag
-    group.add_option("--disable-rlmost", action="store_false", dest="rlMostFlag", default=True,
-        help='Disable using leftmost and rightmost dependents of words fed to the MLP') # rlMostFlag
-    group.add_option("--userl", action="store_true", dest="rlFlag", default=False)
-    group.add_option("--k", type="int", metavar="INTEGER", default=3,
-        help="Number of stack elements to feed to MLP")
-    parser.add_option_group(group)
-
-    group.add_option("--learning-rate", type="float", metavar="FLOAT",
-        help="Learning rate for neural network optimizer", default=0.001)
-    group.add_option("--mlp-hidden-dims", type="int", metavar="INTEGER",
-        help="MLP hidden layer dimensions", default=100)
-    group.add_option("--activation", help="Activation function in the MLP", default="tanh")
-    parser.add_option_group(group)
-
-    (options, args) = parser.parse_args()
+    options = {}
+    options["activation"] = "tanh" # Activation function in the MLP
+    options["mlp_hidden_dims"] = 100 # MLP hidden layer dimensions
+    options["learning_rate"] = 0.001 # Learning rate for neural network optimizer
+    options["oracle"] = True # Use the static oracle instead of the dynamic oracle
+    options["headFlag"] = True # Disable using the head of word vectors fed to the MLP
+    options["rlMostFlag"] = True # Disable using leftmost and rightmost dependents of words fed to the MLP
+    options["rlFlag"] = False
+    options["k"] = 3 # Number of stack elements to feed to MLP
+    options["epochs"] = 30 # Number of epochs
+    options["first_epoch"] = 1
+    options["max_sentences"] = -1 # Only train using n sentences per epoch
 
     setup_logging()
 
@@ -132,9 +115,9 @@ def main():
     val_dir = 'sample_data/UD_Russian-SynTagRus/ru_syntagrus-ud-val.conllu'
     test_dir = 'sample_data/UD_Russian-SynTagRus/ru_syntagrus-ud-test.conllu'
 
-    train = list(read_conll(train_dir, maxSize=options.max_sentences))
-    val = list(read_conll(val_dir, maxSize=options.max_sentences))
-    test = list(read_conll(test_dir, maxSize=options.max_sentences))
+    train = list(read_conll(train_dir, maxSize=options["max_sentences"]))
+    val = list(read_conll(val_dir, maxSize=options["max_sentences"]))
+    test = list(read_conll(test_dir, maxSize=options["max_sentences"]))
     run(train, val, test, options)
 
 if __name__ == '__main__':

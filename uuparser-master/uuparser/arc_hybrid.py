@@ -100,9 +100,9 @@ class ArcHybridLSTM:
 
         self.irels = irels
 
-        self.activation = options.activation
+        self.activation = options["activation"]
 
-        self.hidden_dims = options.mlp_hidden_dims
+        self.hidden_dims = options["mlp_hidden_dims"]
 
         self.mlp_in_dims = 30 # TODO: Create a logical value.
 
@@ -114,15 +114,15 @@ class ArcHybridLSTM:
         self.labeled_GNN = to_hetero(self.labeled_GNN, self.metadata, aggr='sum')
 
 
-        self.unlabeled_optimizer = optim.Adam(self.unlabeled_GNN.parameters(), lr=options.learning_rate)
-        self.labeled_optimizer = optim.Adam(self.labeled_GNN.parameters(), lr=options.learning_rate)
+        self.unlabeled_optimizer = optim.Adam(self.unlabeled_GNN.parameters(), lr=options["learning_rate"]
+        self.labeled_optimizer = optim.Adam(self.labeled_GNN.parameters(), lr=options["learning_rate"]
 
-        self.oracle = options.oracle
+        self.oracle = options["oracle"]
 
-        self.headFlag = options.headFlag
-        self.rlMostFlag = options.rlMostFlag
-        self.rlFlag = options.rlFlag
-        self.k = options.k
+        self.headFlag = options["headFlag"]
+        self.rlMostFlag = options["rlMostFlag"]
+        self.rlFlag = options["rlFlag"]
+        self.k = options["k"]
 
     def __evaluate(self, stack, buf, sentence, train):
         """
