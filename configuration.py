@@ -1,6 +1,5 @@
 import torch
 from torch_geometric.data import HeteroData
-from jax.numpy import int32
 
 
 from copy import deepcopy
