@@ -24,5 +24,5 @@ logging.debug('New debug')
 logging.info('New info')
 
 
-from pathlib import Path
-print(Path('/content/app.log').read_text())
+#from pathlib import Path
+#print(Path('/content/app.log').read_text())
