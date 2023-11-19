@@ -8,7 +8,7 @@ for handler in logging.root.handlers[:]:
 
 logging.basicConfig(
     filename='app.log', # write to this file
-    filemode='a', # open in append mode
+    filemode='w', # open in append mode
     format='%(name)s - %(levelname)s - %(message)s'
     )
 
