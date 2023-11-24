@@ -77,14 +77,13 @@ class GNNNet:
         global evaluate_time, transform_time
         ts = time.time()
         graph = config.config_to_graph(embeds)
+        graph.to(self.device)
         te = time.time() - ts
         transform_time += te
         ts = time.time()
-        g_x_dict = graph.x_dict.to(self.device)
-        g_edge_index_dict = graph.edge_index_dict.to(self.device)
-        uscrs = self.unlabeled_GNN(g_x_dict, g_edge_index_dict)
+        uscrs = self.unlabeled_GNN(graph.x_dict, graph.edge_index_dict)
         uscrs = torch.sum(uscrs['node'], dim=0)
-        scrs = self.labeled_GNN(g_x_dict, g_edge_index_dict)
+        scrs = self.labeled_GNN(graph.x_dict, graph.edge_index_dict)
         scrs = torch.sum(scrs['node'], dim=0)
         te2 = time.time() - ts
         evaluate_time += te2
