@@ -28,14 +28,19 @@ class GNNNet:
         self.hidden_dims = options["hidden_dims"]
         self.out_irels_dims = out_irels_dims
 
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu" )
+        print("device:", self.device)
+
         self.metadata = (['node'], [('node', 'graph', 'node'), ('node', 'stack', 'node'),\
                                      ('node', 'buffer', 'node')])
         self.unlabeled_GNN = GNNBlock(hidden_channels=self.hidden_dims, out_channels=4)
         self.unlabeled_GNN = to_hetero(self.unlabeled_GNN, self.metadata, aggr='sum')
+        self.unlabeled_GNN.to(self.device)
 
         self.labeled_GNN = GNNBlock(hidden_channels=self.hidden_dims, \
                                     out_channels=2*self.out_irels_dims+2)
         self.labeled_GNN = to_hetero(self.labeled_GNN, self.metadata, aggr='sum')
+        self.labeled_GNN.to(self.device)
 
         self.unlabeled_optimizer = optim.Adam(self.unlabeled_GNN.parameters(), \
                                               lr=options["learning_rate"])
@@ -75,9 +80,11 @@ class GNNNet:
         te = time.time() - ts
         transform_time += te
         ts = time.time()
-        uscrs = self.unlabeled_GNN(graph.x_dict, graph.edge_index_dict)
+        g_x_dict = graph.x_dict.to(self.device)
+        g_edge_index_dict = graph.edge_index_dict.to(self.device)
+        uscrs = self.unlabeled_GNN(g_x_dict, g_edge_index_dict)
         uscrs = torch.sum(uscrs['node'], dim=0)
-        scrs = self.labeled_GNN(graph.x_dict, graph.edge_index_dict)
+        scrs = self.labeled_GNN(g_x_dict, g_edge_index_dict)
         scrs = torch.sum(scrs['node'], dim=0)
         te2 = time.time() - ts
         evaluate_time += te2
