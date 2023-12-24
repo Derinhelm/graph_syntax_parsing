@@ -1,12 +1,11 @@
 from itertools import chain
+from logging import getLogger
 from operator import itemgetter
 import random
 import time
 
-
 from constants import LEFT_ARC, RIGHT_ARC, SHIFT, SWAP
 from gnn import GNNNet
-from project_logging import logging
 
 class Oracle:
     def __init__(self, options, irels, embeds):
@@ -186,13 +185,20 @@ class Oracle:
         return best
 
     def create_train_transition(self, config, dynamic_oracle):
+        time_logger = getLogger('time_logger')
+
+        ts = time.time()
         scrs, uscrs = self.net.evaluate(config, self.embeds)
+        time_logger.info(f"Time of net.evaluate: {time.time() - ts}")
+
+        ts = time.time()
         valid, wrong, shift_case, swap_cost = self.create_valid_wrong(config, scrs, uscrs)
 
         best_valid = max(valid, key=itemgetter(2))
         best_wrong = max(wrong, key=itemgetter(2))
         best = self.create_best(best_valid, best_wrong, swap_cost, config, dynamic_oracle)
         self.error_append(best, best_valid, best_wrong, config)
+        time_logger.info(f"Time of create_best+: {time.time() - ts}")
         return best, shift_case
 
     def train_logging(self):
@@ -203,7 +209,8 @@ class Oracle:
             f' Labeled Errors: {self.train_info["lerrors"] / self.train_info["etotal"]:.3f}'
             f' Time: {time.time() - self.train_info["start"]:.3f}s'
         )
-        logging.debug(loss_message)
+        info_logger = getLogger('info_logger')
+        info_logger.debug(loss_message)
         self.train_info["start"] = time.time() # TODO: зачем этот параметр ?
         self.train_info["eerrors"], self.train_info["eloss"], self.train_info["etotal"], self.train_info["lerrors"] = \
             0, 0.0, 0, 0 # TODO: Почему здесь зануляем?

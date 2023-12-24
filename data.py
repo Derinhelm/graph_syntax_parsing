@@ -1,5 +1,4 @@
 from utils import set_seeds, read_conll
-from project_logging import logging
 from run import run
 from embeddings import create_embeds, load_embeds
 

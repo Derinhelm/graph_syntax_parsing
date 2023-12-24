@@ -1,3 +1,4 @@
+from logging import getLogger
 import random
 import time
 import tqdm
@@ -6,7 +7,6 @@ import tqdm
 from configuration import Configuration
 from constants import SWAP
 from oracle import Oracle
-from project_logging import logging
 from utils import ConllEntry
 
 
@@ -24,7 +24,7 @@ class Parser:
 
     def Predict(self, data):
         reached_max_swap = 0
-
+        info_logger = getLogger('info_logger')
         pbar = tqdm.tqdm(
             data,
             desc="Parsing",
@@ -45,7 +45,7 @@ class Parser:
                 if iSwap == max_swap and not reached_swap_for_i_sentence:
                     reached_max_swap += 1
                     reached_swap_for_i_sentence = True
-                    logging.debug(f"reached max swap in {reached_max_swap:d} \
+                    info_logger.debug(f"reached max swap in {reached_max_swap:d} \
                                   out of {iSentence:d} sentences")
                 config.apply_transition(best)
                 if best[1] == SWAP:
@@ -61,22 +61,31 @@ class Parser:
             yield osentence
 
     def train_sentence(self, sentence):
+        time_logger = getLogger('time_logger')
         config = Configuration(sentence, self.oracle.irels)
 
         while not config.is_end():
+            ts = time.time()
             best, shift_case = self.oracle.create_train_transition(config, self.dynamic_oracle)
+            time_logger.info(f"Time of create_train_transition: {time.time() - ts}")
 
             #updates for the dynamic oracle
             if self.dynamic_oracle: # TODO: проверить, что значит True/False (где dynamic/static)
+                ts = time.time()
                 config.dynamic_oracle_updates(best, shift_case)
+                time_logger.info(f"Time of dynamic_oracle_updates: {time.time() - ts}")
 
+            ts = time.time()
             config.apply_transition(best)
+            time_logger.info(f"Time of apply_transition: {time.time() - ts}")
         return
 
     def Train(self, trainData):
         random.shuffle(trainData)
+        info_logger = getLogger('info_logger')
+        time_logger = getLogger('time_logger')
         # in certain cases the data will already have been shuffled after being read from file or while creating dev data
-        logging.info(f"Length of training data: {len(trainData)}")
+        info_logger.info(f"Length of training data: {len(trainData)}")
 
         beg = time.time()
 
@@ -90,12 +99,18 @@ class Parser:
             if iSentence % 100 == 0:
                 self.oracle.train_logging()
 
+            ts = time.time()
             self.train_sentence(sentence)
+            time_logger.info(f"Time of train_sentence: {time.time() - ts}")
+            ts = time.time()
             self.oracle.error_processing(False)
+            time_logger.info(f"Time of error_processing: {time.time() - ts}")
 
+        ts = time.time()
         self.oracle.error_processing(True)
+        time_logger.info(f"Time of error_processing: {time.time() - ts}")
 
         mloss = self.oracle.get_mloss()
 
-        logging.info(f"Loss: {mloss / iSentence}")
-        logging.info(f"Total Training Time: {time.time() - beg:.2g}s")
+        info_logger.info(f"Loss: {mloss / iSentence}")
+        info_logger.info(f"Total Training Time: {time.time() - beg:.2g}s")

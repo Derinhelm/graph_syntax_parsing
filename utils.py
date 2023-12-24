@@ -1,10 +1,8 @@
 from collections import Counter
+from logging import getLogger
 import re
 import time
 import random
-
-
-from project_logging import logging
 
 class ConllEntry:
     def __init__(self, id, form, lemma, pos, cpos, feats=None, parent_id=None, relation=None,
@@ -112,7 +110,8 @@ def generate_root_token():
 
 def read_conll(filename, drop_nproj=False, train=True):
     fh = open(filename,'r',encoding='utf-8')
-    logging.info(f"Reading {filename}")
+    info_logger = getLogger('info_logger')
+    info_logger.info(f"Reading {filename}")
     ts = time.time()
     dropped = 0
     sents_read = 0
@@ -138,7 +137,7 @@ def read_conll(filename, drop_nproj=False, train=True):
                                                      tok.parent_id][0]
                     sentences.append(tokens)
                 else:
-                    logging.debug('Non-projective sentence dropped')
+                    info_logger.debug('Non-projective sentence dropped')
                     dropped += 1
             tokens = [generate_root_token()]
         else:
@@ -160,15 +159,16 @@ def read_conll(filename, drop_nproj=False, train=True):
     if len(tokens) > 1:
         sentences.append(tokens)
 
-    logging.debug(f'{sents_read} sentences read')
+    info_logger.debug(f'{sents_read} sentences read')
 
     te = time.time()
-    logging.info(f'Time: {te-ts:.2g}s')
+    info_logger.info(f'Time: {te-ts:.2g}s')
     return sentences, words
 
 
 def write_conll(fn, conll_gen):
-    logging.info(f"Writing to {fn}")
+    info_logger = getLogger('info_logger')
+    info_logger.info(f"Writing to {fn}")
     sents = 0
     with open(fn, 'w', encoding='utf-8') as fh:
         for sentence in conll_gen:
@@ -176,7 +176,7 @@ def write_conll(fn, conll_gen):
             for entry in sentence[1:]:
                 fh.write(str(entry) + '\n')
             fh.write('\n')
-        logging.debug(f"Wrote {sents} sentences")
+        info_logger.debug(f"Wrote {sents} sentences")
 
 
 numberRegex = re.compile("[0-9]+|[0-9]+\\.[0-9]+|[0-9]+[0-9,]+");
@@ -201,8 +201,9 @@ def inorder(sentence):
 
 
 def set_seeds():
+    info_logger = getLogger('info_logger')
     python_seed = 1
-    logging.debug("Using default Python seed")
+    info_logger.debug("Using default Python seed")
     random.seed(python_seed)
 
 

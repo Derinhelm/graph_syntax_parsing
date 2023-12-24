@@ -1,3 +1,4 @@
+from logging import getLogger
 import time
 import torch
 import torch.nn as nn
@@ -6,8 +7,6 @@ import torch.nn.functional as F
 
 from torch_geometric.nn import SAGEConv, to_hetero
 import torch
-
-from project_logging import logging
 
 class GNNBlock(torch.nn.Module):
     def __init__(self, hidden_channels, out_channels):
@@ -19,9 +18,6 @@ class GNNBlock(torch.nn.Module):
         x = self.conv1(x, edge_index).relu()
         x = self.conv2(x, edge_index)
         return x
-
-evaluate_time = 0
-transform_time = 0
 
 class GNNNet:
     def __init__(self, options, out_irels_dims):
@@ -68,28 +64,27 @@ class GNNNet:
         self.labeled_GNN.load_state_dict(lab_checkpoint['model_state_dict'], strict=False)
 
     def Save(self, epoch):
+        info_logger = getLogger('info_logger')
         unlab_path = 'models/model_unlab' + '_' + str(epoch)
         lab_path = 'models/model_lab' + '_' + str(epoch)
-        logging.info(f'Saving unlabeled model to {unlab_path}')
+        info_logger.info(f'Saving unlabeled model to {unlab_path}')
         torch.save({'epoch': epoch, 'model_state_dict': self.unlabeled_GNN.state_dict()}, \
                    unlab_path)
-        logging.info(f'Saving labeled model to {lab_path}')
+        info_logger.info(f'Saving labeled model to {lab_path}')
         torch.save({'epoch': epoch, 'model_state_dict': self.labeled_GNN.state_dict()}, lab_path)
 
     def evaluate(self, config, embeds):
-        global evaluate_time, transform_time
+        time_logger = getLogger('time_logger')
         ts = time.time()
         graph = config.config_to_graph(embeds)
         graph.to(self.device)
-        te = time.time() - ts
-        transform_time += te
+        time_logger.info(f"Time of config_to_graph: {time.time() - ts}")
         ts = time.time()
         uscrs = self.unlabeled_GNN(graph.x_dict, graph.edge_index_dict)
         uscrs = torch.sum(uscrs['node'], dim=0)
         scrs = self.labeled_GNN(graph.x_dict, graph.edge_index_dict)
         scrs = torch.sum(scrs['node'], dim=0)
-        te2 = time.time() - ts
-        evaluate_time += te2
+        time_logger.info(f"Time of unlabeled_GNN/labeled_GNN: {time.time() - ts}")
         return scrs, uscrs
 
     def error_processing(self, errs):

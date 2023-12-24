@@ -1,4 +1,5 @@
-from project_logging import logging
+from logging import getLogger
+
 from project_parser import Parser
 from utils import ConllEntry, get_irels
 
@@ -32,8 +33,9 @@ def run(traindata, valdata, testdata, embeds, hidden_dims=100, learning_rate=0.0
 
     options["epochs"] = epochs # Number of epochs
     options["first_epoch"] = first_epoch
+    info_logger = getLogger('info_logger')
     irels = get_irels(traindata)
-    logging.debug('Initializing the model')
+    info_logger.debug('Initializing the model')
     parser = Parser(options, irels, embeds)
     global p
     p = parser
@@ -42,32 +44,32 @@ def run(traindata, valdata, testdata, embeds, hidden_dims=100, learning_rate=0.0
 
     for epoch in range(options["first_epoch"], options["epochs"] + 1):
         # Training
-        logging.info(f'Starting epoch {epoch} (training)')
+        info_logger.info(f'Starting epoch {epoch} (training)')
         parser.Train(traindata)
-        logging.info(f'Finished epoch {epoch} (training)')
+        info_logger.info(f'Finished epoch {epoch} (training)')
 
         parser.Save(epoch)
 
-        logging.info(f"Predicting on dev data")
+        info_logger.info(f"Predicting on dev data")
         dev_pred = list(parser.Predict(valdata))
         mean_dev_score = evaluate_uas_epoche(dev_pred)
-        logging.info(f"Dev score {mean_dev_score:.2f} at epoch {epoch:d}")
+        info_logger.info(f"Dev score {mean_dev_score:.2f} at epoch {epoch:d}")
         print(f"Dev score {mean_dev_score:.2f} at epoch {epoch:d}")
 
         if mean_dev_score > dev_best[1]:
             dev_best = [epoch,mean_dev_score] # update best dev score
 
-    logging.info(f"Loading best model from epoche{dev_best[0]:d}")
+    info_logger.info(f"Loading best model from epoche{dev_best[0]:d}")
     # Loading best_models to parser.labeled_GNN and parser.unlabeled_GNN
     parser.Load(epoch)
 
-    logging.info(f"Predicting on test data")
+    info_logger.info(f"Predicting on test data")
 
     test_pred = list(parser.Predict(testdata))
     mean_test_score = evaluate_uas_epoche(test_pred)
 
-    logging.info(f"On test obtained UAS score of {mean_test_score:.2f}")
+    info_logger.info(f"On test obtained UAS score of {mean_test_score:.2f}")
     print(f"On test obtained UAS score of {mean_test_score:.2f}")
 
 
-    logging.debug('Finished predicting')
+    info_logger.debug('Finished predicting')
