@@ -61,6 +61,9 @@ class GNNNet:
         self.unlabeled_GNN = to_hetero(self.unlabeled_GNN, self.metadata, aggr='sum')
         self.labeled_GNN = to_hetero(self.labeled_GNN, self.metadata, aggr='sum')
 
+        self.unlabeled_GNN.to(self.device)
+        self.labeled_GNN.to(self.device)
+
         lab_checkpoint = torch.load(lab_path)
         self.labeled_GNN.load_state_dict(lab_checkpoint['model_state_dict'], strict=False)
 
