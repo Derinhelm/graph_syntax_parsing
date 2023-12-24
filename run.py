@@ -22,8 +22,16 @@ def evaluate_uas_epoche(sentence_list):
 
 p = None
 
-def run(traindata, valdata, testdata, embeds, options):
+def run(traindata, valdata, testdata, embeds, hidden_dims=100, learning_rate=0.001,\
+        dynamic_oracle=True, epochs=10, first_epoch=1):
+    options = {}
+    options["hidden_dims"] = hidden_dims # MLP hidden layer dimensions
+    options["learning_rate"] = learning_rate # Learning rate for neural network optimizer
 
+    options["dynamic_oracle"] = dynamic_oracle # Use the static oracle instead of the dynamic oracle
+
+    options["epochs"] = epochs # Number of epochs
+    options["first_epoch"] = first_epoch
     irels = get_irels(traindata)
     logging.debug('Initializing the model')
     parser = Parser(options, irels, embeds)
