@@ -5,14 +5,16 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 
-from torch_geometric.nn import SAGEConv, to_hetero
+from torch_geometric.nn import GCNConv, to_hetero
 import torch
 
 class GNNBlock(torch.nn.Module):
     def __init__(self, hidden_channels, out_channels):
         super().__init__()
-        self.conv1 = SAGEConv(312, hidden_channels)
-        self.conv2 = SAGEConv(hidden_channels, out_channels)
+        #self.conv1 = SAGEConv(312, hidden_channels)
+        self.conv1 = GCNConv(312, hidden_channels)
+        #self.conv2 = SAGEConv(hidden_channels, out_channels)
+        self.conv2 = GCNConv(hidden_channels, out_channels)
 
     def forward(self, x, edge_index):
         x = self.conv1(x, edge_index).relu()
