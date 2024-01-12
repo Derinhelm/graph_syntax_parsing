@@ -70,7 +70,7 @@ class Parser:
             time_logger.info(f"Time of create_train_transition: {time.time() - ts}")
 
             #updates for the dynamic oracle
-            if self.dynamic_oracle: # TODO: проверить, что значит True/False (где dynamic/static)
+            if self.dynamic_oracle:
                 ts = time.time()
                 config.dynamic_oracle_updates(best, shift_case)
                 time_logger.info(f"Time of dynamic_oracle_updates: {time.time() - ts}")

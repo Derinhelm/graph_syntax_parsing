@@ -36,7 +36,10 @@ class ConllEntry:
                   self.pred_relation is not None else self.relation, \
                   self.deps, self.misc]
         return '\t'.join(['_' if v is None else v for v in values])'''
-        return self.form + " " + str(self.id)
+        s = self.form + "_" + str(self.id)
+        if self.pred_parent_id is not None:
+            s += "(" + str(self.pred_parent_id) + ")"
+        return  s
 
 class ParseForest:
     def __init__(self, sentence):
@@ -62,7 +65,7 @@ class ParseForest:
         del self.roots[child_index]
 
     def __str__(self):
-        return " ".join(map(str, self.roots))
+        return ", ".join(map(str, self.roots))
 
 
 def isProj(sentence):

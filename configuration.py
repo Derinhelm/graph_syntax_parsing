@@ -60,6 +60,11 @@ class Configuration:
         for root in self.sentence:
             root.relation = root.relation if root.relation in irels else 'runk'
 
+    def __str__(self):
+        s = "Config.\nsentence: " + ", ".join(map(str, self.sentence)) + "\n"
+        s += "stack: " + str(self.stack) + "\n"
+        s += "buffer: " + str(self.buffer)
+        return s
 
     def config_to_graph(self, embeds):
         word_embeds = torch.empty((len(self.sentence), 312))
@@ -137,9 +142,6 @@ class Configuration:
 
     def check_swap_conditions(self):
         return len(self.stack) > 0 and self.stack.roots[-1].id < self.buffer.roots[0].id
-
-    def __str__(self):
-        return "stack:" + str(self.stack) + "\n" + "buffer:" + str(self.buffer) + "\n"
 
     def calculate_left_cost(self):
         if not self.check_left_arc_conditions():
