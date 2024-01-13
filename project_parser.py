@@ -62,12 +62,16 @@ class Parser:
 
     def train_sentence(self, sentence):
         time_logger = getLogger('time_logger')
+        transition_logger = getLogger('transition_logger')
         config = Configuration(sentence, self.oracle.irels)
 
         while not config.is_end():
+            transition_logger.info("--------------------")
+            transition_logger.info(str(config))
             ts = time.time()
             best, shift_case = self.oracle.create_train_transition(config, self.dynamic_oracle)
             time_logger.info(f"Time of create_train_transition: {time.time() - ts}")
+            transition_logger.info("best transition:" + str(best))
 
             #updates for the dynamic oracle
             if self.dynamic_oracle:

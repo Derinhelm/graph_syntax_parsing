@@ -25,7 +25,7 @@ p = None
 
 def run(traindata, valdata, testdata, embeds, hidden_dims=100, learning_rate=0.001,\
         dynamic_oracle=True, epochs=10, first_epoch=1, info_logging=True, \
-        time_logging=True):
+        time_logging=True, transition_logging=True):
     options = {}
     options["hidden_dims"] = hidden_dims # MLP hidden layer dimensions
     options["learning_rate"] = learning_rate # Learning rate for neural network optimizer
@@ -36,10 +36,13 @@ def run(traindata, valdata, testdata, embeds, hidden_dims=100, learning_rate=0.0
     options["first_epoch"] = first_epoch
     info_logger = getLogger('info_logger')
     time_logger = getLogger('time_logger')
+    transition_logger = getLogger('transition_logger')
     if not info_logging:
         info_logger.removeHandler(info_logger.handlers[0])
     if not time_logging:
         time_logger.removeHandler(time_logger.handlers[0])
+    if not transition_logging:
+        transition_logger.removeHandler(transition_logger.handlers[0])
     irels = get_irels(traindata)
     info_logger.debug('Initializing the model')
     parser = Parser(options, irels, embeds)

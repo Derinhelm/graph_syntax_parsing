@@ -186,16 +186,20 @@ class Oracle:
 
     def create_train_transition(self, config, dynamic_oracle):
         time_logger = getLogger('time_logger')
+        transition_logger = getLogger('transition_logger')
 
         ts = time.time()
         scrs, uscrs = self.net.evaluate(config, self.embeds)
         time_logger.info(f"Time of net.evaluate: {time.time() - ts}")
+        transition_logger.info("scrs:" + str(scrs))
+        transition_logger.info("uscrs:" + str(uscrs))
 
         ts = time.time()
         valid, wrong, shift_case, swap_cost = self.create_valid_wrong(config, scrs, uscrs)
 
         best_valid = max(valid, key=itemgetter(2))
         best_wrong = max(wrong, key=itemgetter(2))
+        transition_logger.info("best_valid:" + str(best_valid) + ", best_wrong:" + str(best_wrong))
         best = self.create_best(best_valid, best_wrong, swap_cost, config, dynamic_oracle)
         self.error_append(best, best_valid, best_wrong, config)
         time_logger.info(f"Time of create_best+: {time.time() - ts}")
