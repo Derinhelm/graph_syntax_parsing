@@ -81,9 +81,9 @@ class GNNNet:
         time_logger.info(f"Time of config_to_graph: {time.time() - ts}")
         ts = time.time()
         uscrs = self.unlabeled_GNN(graph.x_dict, graph.edge_index_dict)
-        uscrs = torch.sum(uscrs['node'], dim=0)
+        uscrs = torch.sum(uscrs['node'].clone().detach().cpu(), dim=0)
         scrs = self.labeled_GNN(graph.x_dict, graph.edge_index_dict)
-        scrs = torch.sum(scrs['node'], dim=0)
+        scrs = torch.sum(scrs['node'].clone().detach().cpu(), dim=0)
         time_logger.info(f"Time of unlabeled_GNN/labeled_GNN: {time.time() - ts}")
         return scrs, uscrs
 
