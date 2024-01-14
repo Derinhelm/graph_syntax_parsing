@@ -20,12 +20,11 @@ class GNNBlock(torch.nn.Module):
         return x
 
 class GNNNet:
-    def __init__(self, options, out_irels_dims):
+    def __init__(self, options, out_irels_dims, device):
         self.hidden_dims = options["hidden_dims"]
         self.out_irels_dims = out_irels_dims
 
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu" )
-        print("device:", self.device)
+        self.device = device
 
         self.metadata = (['node'], [('node', 'graph', 'node'), ('node', 'stack', 'node'),\
                                      ('node', 'buffer', 'node')])
@@ -73,18 +72,22 @@ class GNNNet:
         info_logger.info(f'Saving labeled model to {lab_path}')
         torch.save({'epoch': epoch, 'model_state_dict': self.labeled_GNN.state_dict()}, lab_path)
 
-    def evaluate(self, config):
+    def evaluate(self, config_graph):
         time_logger = getLogger('time_logger')
+        graph_info = config_graph.get_dicts()
         ts = time.time()
-        graph = config.config_to_graph()
-        graph.to(self.device)
-        time_logger.info(f"Time of config_to_graph: {time.time() - ts}")
+        uscrs = self.unlabeled_GNN(*graph_info)
+        time_logger.info(f"Time of unlabeled_GNN: {time.time() - ts}")
         ts = time.time()
-        uscrs = self.unlabeled_GNN(graph.x_dict, graph.edge_index_dict)
         uscrs = torch.sum(uscrs['node'].clone().detach().cpu(), dim=0)
-        scrs = self.labeled_GNN(graph.x_dict, graph.edge_index_dict)
+        time_logger.info(f"Time of detach for unlabeled: {time.time() - ts}")
+
+        ts = time.time()
+        scrs = self.labeled_GNN(*graph_info)
+        time_logger.info(f"Time of labeled_GNN: {time.time() - ts}")
+        ts = time.time()
         scrs = torch.sum(scrs['node'].clone().detach().cpu(), dim=0)
-        time_logger.info(f"Time of unlabeled_GNN/labeled_GNN: {time.time() - ts}")
+        time_logger.info(f"Time of detach for labeled: {time.time() - ts}")
         return scrs, uscrs
 
     def error_processing(self, errs):
