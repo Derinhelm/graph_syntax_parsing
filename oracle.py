@@ -8,11 +8,10 @@ from constants import LEFT_ARC, RIGHT_ARC, SHIFT, SWAP
 from gnn import GNNNet
 
 class Oracle:
-    def __init__(self, options, irels, embeds):
+    def __init__(self, options, irels):
         self.net = GNNNet(options, len(irels))
         self.irels = irels
         self.train_info = self.create_train_info()
-        self.embeds = embeds
 
     def create_train_info(self):
         t_info = {}
@@ -39,7 +38,7 @@ class Oracle:
         RET[i] = (rel, transition, score1) for shift, l_arc and r_arc
          shift = 2 (==> rel=None) ; l_arc = 0; r_acr = 1
         """
-        scrs, uscrs = self.net.evaluate(config, self.embeds)
+        scrs, uscrs = self.net.evaluate(config)
 
         #transition conditions
         right_arc_conditions = config.check_right_arc_conditions()
@@ -189,7 +188,7 @@ class Oracle:
         transition_logger = getLogger('transition_logger')
 
         ts = time.time()
-        scrs, uscrs = self.net.evaluate(config, self.embeds)
+        scrs, uscrs = self.net.evaluate(config)
         time_logger.info(f"Time of net.evaluate: {time.time() - ts}")
         transition_logger.info("scrs:" + str(scrs))
         transition_logger.info("uscrs:" + str(uscrs))

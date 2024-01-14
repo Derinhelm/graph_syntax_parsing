@@ -73,10 +73,10 @@ class GNNNet:
         info_logger.info(f'Saving labeled model to {lab_path}')
         torch.save({'epoch': epoch, 'model_state_dict': self.labeled_GNN.state_dict()}, lab_path)
 
-    def evaluate(self, config, embeds):
+    def evaluate(self, config):
         time_logger = getLogger('time_logger')
         ts = time.time()
-        graph = config.config_to_graph(embeds)
+        graph = config.config_to_graph()
         graph.to(self.device)
         time_logger.info(f"Time of config_to_graph: {time.time() - ts}")
         ts = time.time()

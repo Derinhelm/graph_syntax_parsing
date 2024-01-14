@@ -50,7 +50,7 @@ def create_graph_edges(sentence):
     return torch.stack(graph_edges, dim=0)
 
 class Configuration:
-    def __init__(self, sentence, irels):
+    def __init__(self, sentence, irels, embeds):
         self.sentence = deepcopy(sentence)
         # ensures we are working with a clean copy of sentence and allows memory to be recycled each time round the loop
         self.sentence = [entry for entry in self.sentence if isinstance(entry, ConllEntry)]
@@ -59,6 +59,9 @@ class Configuration:
         self.buffer = ParseForest(self.sentence)
         for root in self.sentence:
             root.relation = root.relation if root.relation in irels else 'runk'
+        self.word_embeds = torch.empty((len(self.sentence), 312))
+        for i in range(len(self.sentence) - 1): # Last element is a technical root element.
+            self.word_embeds[i] = embeds[self.sentence[i].lemma]
 
     def __str__(self):
         s = "Config.\nsentence: " + ", ".join(map(str, self.sentence)) + "\n"
@@ -66,13 +69,9 @@ class Configuration:
         s += "buffer: " + str(self.buffer)
         return s
 
-    def config_to_graph(self, embeds):
-        word_embeds = torch.empty((len(self.sentence), 312))
-        for i in range(len(self.sentence) - 1): # Last element is a technical root element.
-            word_embeds[i] = embeds[self.sentence[i].lemma]
-
+    def config_to_graph(self):
         data = HeteroData()
-        data['node']['x'] = word_embeds
+        data['node']['x'] = self.word_embeds
 
         data[('node', 'graph', 'node')].edge_index = create_graph_edges(self.sentence)
         data[('node', 'stack', 'node')].edge_index = create_stack_edges(self.stack.roots)

@@ -14,7 +14,8 @@ from utils import ConllEntry
 class Parser:
     def __init__(self, options, irels, embeds):
         self.dynamic_oracle = options["dynamic_oracle"]
-        self.oracle = Oracle(options, irels, embeds)
+        self.oracle = Oracle(options, irels)
+        self.embeds = embeds
 
     def Load(self, epoch):
         self.oracle.Load(epoch)
@@ -35,7 +36,7 @@ class Parser:
         )
 
         for iSentence, osentence in enumerate(pbar,1):
-            config = Configuration(osentence, self.oracle.irels)
+            config = Configuration(osentence, self.oracle.irels, self.embeds)
             max_swap = 2*len(osentence)
             reached_swap_for_i_sentence = False
             iSwap = 0
@@ -63,7 +64,7 @@ class Parser:
     def train_sentence(self, sentence):
         time_logger = getLogger('time_logger')
         transition_logger = getLogger('transition_logger')
-        config = Configuration(sentence, self.oracle.irels)
+        config = Configuration(sentence, self.oracle.irels, self.embeds)
 
         while not config.is_end():
             transition_logger.info("--------------------")
