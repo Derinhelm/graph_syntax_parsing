@@ -2,6 +2,7 @@ from collections import Counter
 from logging import getLogger
 import re
 import time
+import torch
 import random
 
 class ConllEntry:
@@ -205,9 +206,11 @@ def inorder(sentence):
 
 def set_seeds():
     info_logger = getLogger('info_logger')
-    python_seed = 1
+    python_seed = 42
     info_logger.debug("Using default Python seed")
     random.seed(python_seed)
+    torch.manual_seed(python_seed)
+
 
 
 def generate_seed():
