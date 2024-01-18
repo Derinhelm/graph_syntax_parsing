@@ -61,6 +61,20 @@ class Parser:
                 tok_o.pred_parent_id = tok.pred_parent_id
             yield osentence
 
+    def train_transaction_processing(self, config, best, shift_case):
+        time_logger = getLogger('time_logger')
+
+        #updates for the dynamic oracle
+        if self.dynamic_oracle:
+            ts = time.time()
+            config.dynamic_oracle_updates(best, shift_case)
+            time_logger.info(f"Time of dynamic_oracle_updates: {time.time() - ts}")
+
+        ts = time.time()
+        config.apply_transition(best)
+        time_logger.info(f"Time of apply_transition: {time.time() - ts}")
+        return
+
     def train_sentence(self, sentence):
         time_logger = getLogger('time_logger')
         transition_logger = getLogger('transition_logger')
@@ -73,16 +87,7 @@ class Parser:
             best, shift_case = self.oracle.create_train_transition(config, self.dynamic_oracle)
             time_logger.info(f"Time of create_train_transition: {time.time() - ts}")
             transition_logger.info("best transition:" + str(best))
-
-            #updates for the dynamic oracle
-            if self.dynamic_oracle:
-                ts = time.time()
-                config.dynamic_oracle_updates(best, shift_case)
-                time_logger.info(f"Time of dynamic_oracle_updates: {time.time() - ts}")
-
-            ts = time.time()
-            config.apply_transition(best)
-            time_logger.info(f"Time of apply_transition: {time.time() - ts}")
+            self.train_transaction_processing(config, best, shift_case)
         return
 
     def Train(self, trainData):
