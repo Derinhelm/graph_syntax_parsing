@@ -76,18 +76,7 @@ class Parser:
         return
 
     def train_sentence(self, sentence):
-        time_logger = getLogger('time_logger')
-        transition_logger = getLogger('transition_logger')
-        config = Configuration(sentence, self.oracle.irels, self.embeds, self.device)
 
-        while not config.is_end():
-            transition_logger.info("--------------------")
-            transition_logger.info(str(config))
-            ts = time.time()
-            best, shift_case = self.oracle.create_train_transition(config, self.dynamic_oracle)
-            time_logger.info(f"Time of create_train_transition: {time.time() - ts}")
-            transition_logger.info("best transition:" + str(best))
-            self.train_transaction_processing(config, best, shift_case)
         return
 
     def Train(self, trainData):
@@ -103,18 +92,28 @@ class Parser:
             trainData, desc="Training", unit="sentences",
             mininterval=1.0, leave=False, disable=False,
         )
-
-        for iSentence, sentence in enumerate(pbar,1):
-            self.oracle.change_sentence_number(iSentence)
-            if iSentence % 100 == 0:
-                self.oracle.train_logging()
-
-            ts = time.time()
-            self.train_sentence(sentence)
-            time_logger.info(f"Time of train_sentence: {time.time() - ts}")
-            ts = time.time()
-            self.oracle.error_processing(False)
-            time_logger.info(f"Time of error_processing: {time.time() - ts}")
+        time_logger = getLogger('time_logger')
+        transition_logger = getLogger('transition_logger')
+        config_list = []
+        for sentence in trainData:
+            config = Configuration(sentence, self.oracle.irels, self.embeds, self.device)
+            config_list.append(config)
+        while len(config_list) != 0:
+            new_config_list = []
+            for config in config_list:
+                transition_logger.info("--------------------")
+                transition_logger.info(str(config))
+                ts = time.time()
+                best, shift_case = self.oracle.create_train_transition(config, self.dynamic_oracle)
+                time_logger.info(f"Time of create_train_transition: {time.time() - ts}")
+                transition_logger.info("best transition:" + str(best))
+                self.train_transaction_processing(config, best, shift_case)
+                ts = time.time()
+                self.oracle.error_processing(False)
+                time_logger.info(f"Time of error_processing: {time.time() - ts}")
+                if not config.is_end():
+                    new_config_list.append(config)
+            config_list = new_config_list
 
         ts = time.time()
         self.oracle.error_processing(True)
@@ -122,5 +121,5 @@ class Parser:
 
         mloss = self.oracle.get_mloss()
 
-        info_logger.info(f"Loss: {mloss / iSentence}")
+        info_logger.info(f"Loss: {mloss / len(trainData)}")
         info_logger.info(f"Total Training Time: {time.time() - beg:.2g}s")
