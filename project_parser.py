@@ -70,9 +70,10 @@ class Parser:
                                                  reached_max_swap, reached_swap_for_i_sentence, iSwap)
 
             res_config_list.append(config)
+            print("res_config_list:", res_config_list)
 
         for iSentence, osentence in enumerate(data,1):
-            config = res_config_list[iSentence]
+            config = res_config_list[iSentence - 1]
             res_osentence = self.create_conll_res(osentence, config)
             yield res_osentence
 
@@ -88,10 +89,6 @@ class Parser:
         ts = time.time()
         config.apply_transition(best)
         time_logger.info(f"Time of apply_transition: {time.time() - ts}")
-        return
-
-    def train_sentence(self, sentence):
-
         return
 
     def Train(self, trainData):
@@ -114,6 +111,7 @@ class Parser:
             config = Configuration(sentence, self.oracle.irels, self.embeds, self.device)
             config_list.append(config)
         while len(config_list) != 0:
+            print("config_list:", config_list)
             new_config_list = []
             for config in config_list:
                 transition_logger.info("--------------------")

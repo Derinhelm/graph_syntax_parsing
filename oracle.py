@@ -1,3 +1,4 @@
+from copy import deepcopy
 from itertools import chain
 from logging import getLogger
 from operator import itemgetter
@@ -88,6 +89,15 @@ class Scores:
         shift_valid, shift_wrong, shift_case = self._calculate_shift_scores(config)
         swap_valid, swap_wrong, swap_cost = self._calculate_swap_scores(config)
 
+        transition_logger = getLogger('transition_logger')
+        transition_logger.info("left_valid:" + str(left_valid))
+        transition_logger.info("left_wrong:" + str(left_wrong))
+        transition_logger.info("right_valid:" + str(right_valid))
+        transition_logger.info("right_wrong:" + str(right_wrong))
+        transition_logger.info("shift_valid:" + str(shift_valid))
+        transition_logger.info("shift_wrong:" + str(shift_wrong))
+        transition_logger.info("swap_valid:" + str(swap_valid))
+        transition_logger.info("swap_wrong:" + str(swap_wrong))
         valid = chain(left_valid, right_valid, shift_valid, swap_valid)
         wrong = chain(left_wrong, right_wrong, shift_wrong, swap_wrong, [(None, 4, -float('inf'))])
         # (None, 4, -float('inf')) is used to ensure that at least one element will be.
@@ -109,19 +119,23 @@ class Scores:
 
         return best
 
-    def transition_logging(self, best_valid, best_wrong):
+    def transition_logging(self, valid, wrong, best_valid, best_wrong):
         transition_logger = getLogger('transition_logger')
         transition_logger.info("scrs:" + str(self.scrs))
         transition_logger.info("uscrs:" + str(self.uscrs))
+        transition_logger.info("valid:" + str(list(valid)))
+        transition_logger.info("wrong:" + str(list(wrong)))
         transition_logger.info("best_valid:" + str(best_valid) + ", best_wrong:" + str(best_wrong))
 
     def create_best_transaction(self, config, dynamic_oracle, error_info, irels):
         valid, wrong, shift_case, swap_cost = self.create_valid_wrong(config, irels)
+        valid_copy = deepcopy(valid)
+        wrong_copy = deepcopy(wrong)
         best_valid = max(valid, key=itemgetter(2))
         best_wrong = max(wrong, key=itemgetter(2))
         best = self.choose_best(best_valid, best_wrong, swap_cost, dynamic_oracle)
         error_info.error_append(best, best_valid, best_wrong, config)
-        self.transition_logging(best_valid, best_wrong)
+        self.transition_logging(valid_copy, wrong_copy, best_valid, best_wrong)
         return best, shift_case
 
     def test_evaluate(self, config, irels):
@@ -174,12 +188,16 @@ class ErrorInfo:
                 #attachment error
                 if child.pred_parent_id != child.parent_id:
                     self.train_info["eerrors"] += 1
-
+        
+        transition_logger = getLogger('transition_logger')
         if bestValid[2] < bestWrong[2] + 1.0:
             loss = bestWrong[2] - bestValid[2]
             self.train_info["mloss"] += 1.0 + bestWrong[2] - bestValid[2]
             self.train_info["eloss"] += 1.0 + bestWrong[2] - bestValid[2]
             self.train_info["errs"].append(loss)
+            transition_logger.info("loss:" + str(loss))
+        else:
+            transition_logger.info("no loss")
 
         #??? when did this happen and why?
         if best[1] == 0 or best[1] == 2:

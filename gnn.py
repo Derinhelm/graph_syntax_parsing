@@ -1,3 +1,4 @@
+from copy import deepcopy
 from logging import getLogger
 import time
 import torch
@@ -94,6 +95,9 @@ class GNNNet:
         self.labeled_optimizer.zero_grad()
         self.unlabeled_optimizer.zero_grad()
         eerrs = torch.sum(torch.tensor(errs, requires_grad=True))
+        transition_logger = getLogger('transition_logger')
         eerrs.backward()
         self.labeled_optimizer.step() # TODO Какой из оптимизаторов ???
         self.unlabeled_optimizer.step()
+        transition_logger.info("eerrs sum:" + str(eerrs.clone().detach()))
+        transition_logger.info("eerrs:" + str(errs))

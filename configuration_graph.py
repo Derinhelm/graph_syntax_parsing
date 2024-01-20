@@ -54,6 +54,9 @@ class ConfigGraph:
         ts = time.time()
         self.data = HeteroData()
         self.data['node']['x'] = word_embeds
+        transition_logger = getLogger('transition_logger')
+        transition_logger.info("sentence:" + ", ".join(map(str, sentence)))
+        transition_logger.info("graph.data['node']['x']. len:" + str(len(self.data['node']['x'])) + ", " + str(self.data['node']['x']))
 
         self.data[('node', 'graph', 'node')].edge_index = create_graph_edges(sentence)
         self.data[('node', 'stack', 'node')].edge_index = create_stack_edges(stack.roots)
@@ -64,9 +67,10 @@ class ConfigGraph:
 
     def __str__(self):
         s = "Graph edges: "
-        s += "graph:" + str(self.data._edge_store_dict[('node', 'graph', 'node')]['edge_index']) + "\n"
-        s += "stack:" + str(self.data._edge_store_dict[('node', 'stack', 'node')]['edge_index']) + "\n"
-        s += "buffer:" + str(self.data._edge_store_dict[('node', 'buffer', 'node')]['edge_index'])
+        s += "    graph:" + str(self.data._edge_store_dict[('node', 'graph', 'node')]['edge_index']) + "\n"
+        s += "    stack:" + str(self.data._edge_store_dict[('node', 'stack', 'node')]['edge_index']) + "\n"
+        s += "    buffer:" + str(self.data._edge_store_dict[('node', 'buffer', 'node')]['edge_index']) + "\n"
+        s += "    graph dicts: " + str(self.get_dicts())
         return s
 
     def apply_transition(self, transition, sentence, stack, buffer):
