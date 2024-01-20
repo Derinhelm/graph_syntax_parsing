@@ -23,9 +23,31 @@ class Parser:
     def Save(self, epoch):
         self.oracle.Save(epoch)
 
+    def test_transaction_processing(self, config, best, max_swap, iSentence, \
+                                    reached_max_swap, reached_swap_for_i_sentence, iSwap):
+        info_logger = getLogger('info_logger')
+        if iSwap == max_swap and not reached_swap_for_i_sentence:
+            reached_max_swap += 1
+            reached_swap_for_i_sentence = True
+            info_logger.debug(f"reached max swap in {reached_max_swap:d} \
+                            out of {iSentence:d} sentences")
+        config.apply_transition(best)
+        if best[1] == SWAP:
+            iSwap += 1
+        return reached_max_swap, reached_swap_for_i_sentence, iSwap
+
+    def create_conll_res(self, osentence, config):
+        #keep in memory the information we need, not all the vectors
+        oconll_sentence = [entry for entry in osentence if isinstance(entry, ConllEntry)]
+        oconll_sentence = oconll_sentence[1:] + [oconll_sentence[0]]
+        conll_sentence = config.get_sentence()
+        for tok_o, tok in zip(oconll_sentence, conll_sentence):
+            tok_o.pred_relation = tok.pred_relation
+            tok_o.pred_parent_id = tok.pred_parent_id
+        return osentence
+
     def Predict(self, data):
         reached_max_swap = 0
-        info_logger = getLogger('info_logger')
         pbar = tqdm.tqdm(
             data,
             desc="Parsing",
@@ -34,7 +56,7 @@ class Parser:
             leave=False,
             disable=False,
         )
-
+        res_config_list = []
         for iSentence, osentence in enumerate(pbar,1):
             config = Configuration(osentence, self.oracle.irels, self.embeds, self.device)
             max_swap = 2*len(osentence)
@@ -43,23 +65,16 @@ class Parser:
 
             while not config.is_end():
                 best = self.oracle.create_test_transition(config, iSwap, max_swap)
-                if iSwap == max_swap and not reached_swap_for_i_sentence:
-                    reached_max_swap += 1
-                    reached_swap_for_i_sentence = True
-                    info_logger.debug(f"reached max swap in {reached_max_swap:d} \
-                                  out of {iSentence:d} sentences")
-                config.apply_transition(best)
-                if best[1] == SWAP:
-                    iSwap += 1
+                reached_max_swap, reached_swap_for_i_sentence, iSwap = \
+                        self.test_transaction_processing(config, best, max_swap, iSentence,\
+                                                 reached_max_swap, reached_swap_for_i_sentence, iSwap)
 
-            #keep in memory the information we need, not all the vectors
-            oconll_sentence = [entry for entry in osentence if isinstance(entry, ConllEntry)]
-            oconll_sentence = oconll_sentence[1:] + [oconll_sentence[0]]
-            conll_sentence = config.get_sentence()
-            for tok_o, tok in zip(oconll_sentence, conll_sentence):
-                tok_o.pred_relation = tok.pred_relation
-                tok_o.pred_parent_id = tok.pred_parent_id
-            yield osentence
+            res_config_list.append(config)
+
+        for iSentence, osentence in enumerate(data,1):
+            config = res_config_list[iSentence]
+            res_osentence = self.create_conll_res(osentence, config)
+            yield res_osentence
 
     def train_transaction_processing(self, config, best, shift_case):
         time_logger = getLogger('time_logger')
