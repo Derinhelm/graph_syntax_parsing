@@ -11,25 +11,25 @@ def create_stack_edges(stack):
                             torch.tensor([], dtype=torch.int32)), dim=0)
     stack_edges = []
     if len(stack) == 1:
-        stack_edges.append((stack[0].id - 1, stack[0].id - 1)) # temporary solution
+        stack_edges.append((stack[0].id, stack[0].id)) # temporary solution
     else:
         for i in range(len(stack) - 1): # Represents every two consecutive stack nodes as an edge
-            stack_edges.append((stack[i].id - 1, stack[i + 1].id - 1))
+            stack_edges.append((stack[i].id, stack[i + 1].id))
     stack_edges = tuple(zip(*stack_edges))
     stack_edges = [torch.tensor(stack_edges[0]), torch.tensor(stack_edges[1])]
     return torch.stack(stack_edges, dim=0)
 
 def create_buffer_edges(buffer):
-    if len(buffer) == 0 or len(buffer) == 1: # Last element is a technical root element.
+    if len(buffer) == 0: # Last element is a technical root element.
         return torch.stack((torch.tensor([], dtype=torch.int32), \
                             torch.tensor([], dtype=torch.int32)), dim=0)
     buffer_edges = []
-    if len(buffer) == 2: # Last element is a technical root element.
-        buffer_edges.append((buffer[0].id - 1, buffer[0].id - 1)) # temporary solution
+    if len(buffer) == 1: # Last element is a technical root element.
+        buffer_edges.append((buffer[0].id, buffer[0].id)) # temporary solution
     else:
-        for i in range(len(buffer) - 2): # Last element is a technical root element.
+        for i in range(len(buffer) - 1):
         # Represents every two consecutive buffer nodes as an edge
-            buffer_edges.append((buffer[i].id - 1, buffer[i + 1].id - 1))
+            buffer_edges.append((buffer[i].id, buffer[i + 1].id))
     buffer_edges = tuple(zip(*buffer_edges))
     buffer_edges = [torch.tensor(buffer_edges[0]), torch.tensor(buffer_edges[1])]
     return torch.stack(buffer_edges, dim=0)
@@ -37,9 +37,8 @@ def create_buffer_edges(buffer):
 def create_graph_edges(sentence):
     graph_edges = []
     for node in sentence:
-        if node.pred_parent_id is not None and node.pred_parent_id != 0 \
-            and node.pred_parent_id != -1:
-            graph_edges.append((node.pred_parent_id - 1, node.id - 1))
+        if node.pred_parent_id is not None:
+            graph_edges.append((node.pred_parent_id, node.id))
     if len(graph_edges) == 0:
         return torch.stack((torch.tensor([], dtype=torch.int32), \
                             torch.tensor([], dtype=torch.int32)), dim=0)
