@@ -21,7 +21,7 @@ class GNNBlock(torch.nn.Module):
         return x
 
 class GNNNet:
-    def __init__(self, options, out_irels_dims, device):
+    def __init__(self, options, out_irels_dims, device, elems_in_batch=1):
         self.hidden_dims = options["hidden_dims"]
         self.out_irels_dims = out_irels_dims
 
@@ -29,12 +29,12 @@ class GNNNet:
 
         self.metadata = (['node'], [('node', 'graph', 'node'), ('node', 'stack', 'node'),\
                                      ('node', 'buffer', 'node')])
-        self.unlabeled_GNN = GNNBlock(hidden_channels=self.hidden_dims, out_channels=4)
+        self.unlabeled_GNN = GNNBlock(hidden_channels=self.hidden_dims, out_channels=4*elems_in_batch)
         self.unlabeled_GNN = to_hetero(self.unlabeled_GNN, self.metadata, aggr='sum')
         self.unlabeled_GNN.to(self.device)
 
         self.labeled_GNN = GNNBlock(hidden_channels=self.hidden_dims, \
-                                    out_channels=2*self.out_irels_dims+2)
+                                    out_channels=(2*self.out_irels_dims+2)*elems_in_batch)
         self.labeled_GNN = to_hetero(self.labeled_GNN, self.metadata, aggr='sum')
         self.labeled_GNN.to(self.device)
 
@@ -73,9 +73,8 @@ class GNNNet:
         info_logger.info(f'Saving labeled model to {lab_path}')
         torch.save({'epoch': epoch, 'model_state_dict': self.labeled_GNN.state_dict()}, lab_path)
 
-    def evaluate(self, config_graph):
+    def evaluate(self, graph_info):
         time_logger = getLogger('time_logger')
-        graph_info = config_graph.get_dicts()
         ts = time.time()
         uscrs = self.unlabeled_GNN(*graph_info)
         time_logger.info(f"Time of unlabeled_GNN: {time.time() - ts}")

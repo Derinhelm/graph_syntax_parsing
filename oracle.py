@@ -240,7 +240,7 @@ class Oracle:
         self.error_info = ErrorInfo()
 
     def create_test_transition(self, config, iSwap, max_swap):
-        scrs, uscrs = self.net.evaluate(config.graph)
+        scrs, uscrs = self.net.evaluate(config.graph.get_dicts())
         scores_info = Scores(scrs, uscrs)
         scores = scores_info.test_evaluate(config, self.irels)
         best = max(chain(*(scores if iSwap < max_swap else scores[:3] )), key = itemgetter(2) )
@@ -250,7 +250,7 @@ class Oracle:
         time_logger = getLogger('time_logger')
 
         ts = time.time()
-        scrs, uscrs = self.net.evaluate(config.graph)
+        scrs, uscrs = self.net.evaluate(config.graph.get_dicts())
         time_logger.info(f"Time of net.evaluate: {time.time() - ts}")
 
         ts = time.time()
