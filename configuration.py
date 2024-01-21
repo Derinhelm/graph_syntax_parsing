@@ -19,9 +19,11 @@ class Configuration:
         self.buffer = ParseForest(self.sentence)
         for root in self.sentence:
             root.relation = root.relation if root.relation in irels else 'runk'
-        self.word_embeds = torch.empty((len(self.sentence), 312))
+        embed_size = 312 # for tiny-bert
+        self.word_embeds = torch.empty((len(self.sentence), embed_size))
+        self.word_embeds[0] = torch.zeros(embed_size) # TODO: temporary solution for root element
         for i in range(len(self.sentence) - 1): # Last element is a technical root element.
-            self.word_embeds[i] = embeds[self.sentence[i].lemma]
+            self.word_embeds[i + 1] = embeds[self.sentence[i].lemma] # Word number id starts from 1 in the graph.
 
         self.graph = ConfigGraph(self.sentence, self.stack, self.buffer, self.word_embeds, device)
 
