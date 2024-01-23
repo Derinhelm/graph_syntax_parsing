@@ -239,23 +239,36 @@ class Oracle:
         self.irels = irels
         self.error_info = ErrorInfo()
 
-    def create_test_transition(self, config_to_predict_list):
-        best_config_list = []
-        for config, _, max_swap, _, iSwap in config_to_predict_list:
+    def _evaluate(self, config_list):
+        time_logger = getLogger('time_logger')
+        scores_list = []
+        for config in config_list:
+            ts = time.time()
             scrs, uscrs = self.net.evaluate(config.graph.get_dicts())
+            time_logger.info(f"Time of net.evaluate: {time.time() - ts}")
+            scores_list.append((scrs, uscrs))
+        return scores_list
+
+    def create_test_transition(self, config_to_predict_list):
+        best_transition_list = []
+        config_list = [config for config, _, _, _, _ in config_to_predict_list]
+        scores_list = self._evaluate(config_list)
+        for i in range(len(config_to_predict_list)):
+            config, _, max_swap, _, iSwap = config_to_predict_list[i]
+            scrs, uscrs = scores_list[i]
             scores_info = Scores(scrs, uscrs)
             scores = scores_info.test_evaluate(config, self.irels)
             best = max(chain(*(scores if iSwap < max_swap else scores[:3] )), key = itemgetter(2) )
-            best_config_list.append(best)
-        return best_config_list
+            best_transition_list.append(best)
+        return best_transition_list
 
     def create_train_transition(self, config_to_predict_list, dynamic_oracle):
         time_logger = getLogger('time_logger')
         best_transition_list = []
-        for config in config_to_predict_list:
-            ts = time.time()
-            scrs, uscrs = self.net.evaluate(config.graph.get_dicts())
-            time_logger.info(f"Time of net.evaluate: {time.time() - ts}")
+        scores_list = self._evaluate(config_to_predict_list)
+        for i in range(len(config_to_predict_list)):
+            config = config_to_predict_list[i]
+            scrs, uscrs = scores_list[i]
 
             ts = time.time()
             scores_info = Scores(scrs, uscrs)
