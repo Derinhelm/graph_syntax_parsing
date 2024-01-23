@@ -239,25 +239,31 @@ class Oracle:
         self.irels = irels
         self.error_info = ErrorInfo()
 
-    def create_test_transition(self, config, iSwap, max_swap):
-        scrs, uscrs = self.net.evaluate(config.graph.get_dicts())
-        scores_info = Scores(scrs, uscrs)
-        scores = scores_info.test_evaluate(config, self.irels)
-        best = max(chain(*(scores if iSwap < max_swap else scores[:3] )), key = itemgetter(2) )
-        return best
+    def create_test_transition(self, config_to_predict_list):
+        best_config_list = []
+        for config, _, max_swap, _, iSwap in config_to_predict_list:
+            scrs, uscrs = self.net.evaluate(config.graph.get_dicts())
+            scores_info = Scores(scrs, uscrs)
+            scores = scores_info.test_evaluate(config, self.irels)
+            best = max(chain(*(scores if iSwap < max_swap else scores[:3] )), key = itemgetter(2) )
+            best_config_list.append(best)
+        return best_config_list
 
-    def create_train_transition(self, config, dynamic_oracle):
+    def create_train_transition(self, config_to_predict_list, dynamic_oracle):
         time_logger = getLogger('time_logger')
+        best_transition_list = []
+        for config in config_to_predict_list:
+            ts = time.time()
+            scrs, uscrs = self.net.evaluate(config.graph.get_dicts())
+            time_logger.info(f"Time of net.evaluate: {time.time() - ts}")
 
-        ts = time.time()
-        scrs, uscrs = self.net.evaluate(config.graph.get_dicts())
-        time_logger.info(f"Time of net.evaluate: {time.time() - ts}")
+            ts = time.time()
+            scores_info = Scores(scrs, uscrs)
+            best, shift_case = scores_info.create_best_transaction(config, dynamic_oracle, self.error_info, self.irels)
+            time_logger.info(f"Time of create_best+: {time.time() - ts}")
+            best_transition_list.append((best, shift_case))
+        return best_transition_list
 
-        ts = time.time()
-        scores_info = Scores(scrs, uscrs)
-        best, shift_case = scores_info.create_best_transaction(config, dynamic_oracle, self.error_info, self.irels)
-        time_logger.info(f"Time of create_best+: {time.time() - ts}")
-        return best, shift_case
 
     def error_processing(self, is_final):
         if self.error_info.processing_check(is_final):

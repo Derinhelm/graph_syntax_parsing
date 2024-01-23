@@ -48,13 +48,6 @@ class Parser:
             tok_o.pred_relation = tok.pred_relation
             tok_o.pred_parent_id = tok.pred_parent_id
         return osentence
-
-    def test_create_best_transition(self, config_to_predict_list):
-        best_config_list = []
-        for config, _, max_swap, _, iSwap in config_to_predict_list:
-            best = self.oracle.create_test_transition(config, iSwap, max_swap)
-            best_config_list.append(best)
-        return best_config_list
     
     def Predict(self, data):
         reached_max_swap = 0
@@ -73,7 +66,7 @@ class Parser:
 
         while len(config_to_predict_list) != 0:
             new_config_to_predict_list = []
-            best_config_list = self.test_create_best_transition(config_to_predict_list)
+            best_config_list = self.oracle.create_test_transition(config_to_predict_list)
 
             for i in range(len(config_to_predict_list)):
                 config, iSentence, max_swap, reached_swap_for_i_sentence, iSwap = config_to_predict_list[i]
@@ -103,15 +96,6 @@ class Parser:
         self.time_logger.info(f"Time of apply_transition: {time.time() - ts}")
         return
 
-    def train_create_best_transition(self, config_to_predict_list):
-        best_transition_list = []
-        for config in config_to_predict_list:
-            ts = time.time()
-            best, shift_case = self.oracle.create_train_transition(config, self.dynamic_oracle)
-            self.time_logger.info(f"Time of create_train_transition: {time.time() - ts}")
-            best_transition_list.append((best, shift_case))
-        return best_transition_list
-
     def Train(self, trainData):
         random.shuffle(trainData)
 
@@ -125,7 +109,7 @@ class Parser:
             config_to_predict_list.append(config)
         while len(config_to_predict_list) != 0:
             print("config_to_predict_list:", config_to_predict_list)
-            best_transition_list = self.train_create_best_transition(config_to_predict_list)
+            best_transition_list = self.oracle.create_train_transition(config_to_predict_list, self.dynamic_oracle)
             new_config_to_predict_list = []
             for i in range(len(config_to_predict_list)):
                 config = config_to_predict_list[i]
