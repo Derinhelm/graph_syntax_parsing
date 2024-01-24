@@ -4,6 +4,7 @@ from logging import getLogger
 from operator import itemgetter
 import random
 import time
+from torch_geometric.loader import DataLoader
 
 from constants import LEFT_ARC, RIGHT_ARC, SHIFT, SWAP
 from gnn import GNNNet
@@ -241,21 +242,35 @@ class Oracle:
 
     def _evaluate(self, config_list):
         time_logger = getLogger('time_logger')
-        scores_list = []
-        for config in config_list:
+        scrs_list = []
+        uscrs_list = []
+        print("config_list len:", len(config_list))
+        graph_info_list = [config.graph.get_graph() for config in config_list]
+        real_graph_count = len(graph_info_list)
+        if self.net.elems_in_batch != 1 and len(graph_info_list) % self.net.elems_in_batch != 0:
+            # Делаем размер списка кратным elems_in_batch
+            additional_graph = graph_info_list[-1] # TODO: сейчас совсем простое решение
+            additional_count = self.net.elems_in_batch - (len(graph_info_list) % self.net.elems_in_batch)
+            for _ in range(additional_count):
+                graph_info_list.append(deepcopy(additional_graph))
+        graph_loader = DataLoader(graph_info_list, batch_size=self.net.elems_in_batch, shuffle=False)
+        for batch in graph_loader:
             ts = time.time()
-            scrs, uscrs = self.net.evaluate(config.graph.get_dicts())
+            cur_scrs, cur_uscrs = self.net.evaluate(batch)
             time_logger.info(f"Time of net.evaluate: {time.time() - ts}")
-            scores_list.append((scrs, uscrs))
-        return scores_list
+            scrs_list += cur_scrs
+            uscrs_list += cur_uscrs
+        scrs_list = scrs_list[:real_graph_count]
+        uscrs_list = uscrs_list[:real_graph_count]
+        return scrs_list, uscrs_list
 
     def create_test_transition(self, config_to_predict_list):
         best_transition_list = []
         config_list = [config for config, _, _, _, _ in config_to_predict_list]
-        scores_list = self._evaluate(config_list)
+        scrs_list, uscrs_list = self._evaluate(config_list)
         for i in range(len(config_to_predict_list)):
             config, _, max_swap, _, iSwap = config_to_predict_list[i]
-            scrs, uscrs = scores_list[i]
+            scrs, uscrs = scrs_list[i], uscrs_list[i]
             scores_info = Scores(scrs, uscrs)
             scores = scores_info.test_evaluate(config, self.irels)
             best = max(chain(*(scores if iSwap < max_swap else scores[:3] )), key = itemgetter(2) )
@@ -265,10 +280,10 @@ class Oracle:
     def create_train_transition(self, config_to_predict_list, dynamic_oracle):
         time_logger = getLogger('time_logger')
         best_transition_list = []
-        scores_list = self._evaluate(config_to_predict_list)
+        scrs_list, uscrs_list = self._evaluate(config_to_predict_list)
         for i in range(len(config_to_predict_list)):
             config = config_to_predict_list[i]
-            scrs, uscrs = scores_list[i]
+            scrs, uscrs = scrs_list[i], uscrs_list[i]
 
             ts = time.time()
             scores_info = Scores(scrs, uscrs)

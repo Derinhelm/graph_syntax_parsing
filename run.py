@@ -25,15 +25,17 @@ p = None
 
 def run(traindata, valdata, testdata, embeds, hidden_dims=100, learning_rate=0.001,\
         dynamic_oracle=True, epochs=10, first_epoch=1, info_logging=True, \
-        time_logging=True, transition_logging=True):
+        time_logging=True, transition_logging=True, elems_in_batch=1):
     options = {}
     options["hidden_dims"] = hidden_dims # MLP hidden layer dimensions
     options["learning_rate"] = learning_rate # Learning rate for neural network optimizer
 
-    options["dynamic_oracle"] = dynamic_oracle # Use the static oracle instead of the dynamic oracle
+    options["dynamic_oracle"] = dynamic_oracle
 
     options["epochs"] = epochs # Number of epochs
     options["first_epoch"] = first_epoch
+    options["elems_in_batch"] = elems_in_batch
+
     info_logger = getLogger('info_logger')
     time_logger = getLogger('time_logger')
     transition_logger = getLogger('transition_logger')

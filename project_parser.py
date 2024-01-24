@@ -108,7 +108,6 @@ class Parser:
             config = Configuration(sentence, self.oracle.irels, self.embeds, self.device)
             config_to_predict_list.append(config)
         while len(config_to_predict_list) != 0:
-            print("config_to_predict_list:", config_to_predict_list)
             best_transition_list = self.oracle.create_train_transition(config_to_predict_list, self.dynamic_oracle)
             new_config_to_predict_list = []
             for i in range(len(config_to_predict_list)):

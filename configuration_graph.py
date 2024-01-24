@@ -81,5 +81,8 @@ class ConfigGraph:
         self.data[('node', 'buffer', 'node')].edge_index = create_buffer_edges(buffer.roots)
         self.data.to(self.device)
 
+    def get_graph(self):
+        return self.data
+
     def get_dicts(self):
         return self.data.x_dict, self.data.edge_index_dict
