@@ -247,12 +247,15 @@ class Oracle:
         print("config_list len:", len(config_list))
         graph_info_list = [config.graph.get_graph() for config in config_list]
         real_graph_count = len(graph_info_list)
+        ts = time.time()
         if self.net.elems_in_batch != 1 and len(graph_info_list) % self.net.elems_in_batch != 0:
             # Делаем размер списка кратным elems_in_batch
             additional_graph = graph_info_list[-1] # TODO: сейчас совсем простое решение
             additional_count = self.net.elems_in_batch - (len(graph_info_list) % self.net.elems_in_batch)
             for _ in range(additional_count):
                 graph_info_list.append(deepcopy(additional_graph))
+            time_logger.info(f"Time of addiional graph creating: {time.time() - ts}")
+
         graph_loader = DataLoader(graph_info_list, batch_size=self.net.elems_in_batch, shuffle=False)
         for batch in graph_loader:
             ts = time.time()

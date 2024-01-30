@@ -1,4 +1,5 @@
 from logging import getLogger
+import time
 
 from project_parser import Parser
 from utils import ConllEntry, get_irels
@@ -26,6 +27,7 @@ p = None
 def run(traindata, valdata, testdata, embeds, hidden_dims=100, learning_rate=0.001,\
         dynamic_oracle=True, epochs=10, first_epoch=1, info_logging=True, \
         time_logging=True, transition_logging=True, elems_in_batch=1):
+    ts = time.time()
     options = {}
     options["hidden_dims"] = hidden_dims # MLP hidden layer dimensions
     options["learning_rate"] = learning_rate # Learning rate for neural network optimizer
@@ -84,3 +86,7 @@ def run(traindata, valdata, testdata, embeds, hidden_dims=100, learning_rate=0.0
 
 
     info_logger.debug('Finished predicting')
+    total_time = time.time() - ts
+    info_logger.info(f"Total time: {total_time:.2f}")
+    time_logger.info(f"Total time: {total_time:.2f}")
+    print(f"Total time: {total_time:.2f}")
