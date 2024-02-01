@@ -4,6 +4,8 @@ from logging import getLogger
 from operator import itemgetter
 import random
 import time
+import torch
+from torch_geometric.data import HeteroData
 from torch_geometric.loader import DataLoader
 
 from constants import LEFT_ARC, RIGHT_ARC, SHIFT, SWAP
@@ -250,10 +252,12 @@ class Oracle:
         ts = time.time()
         if self.net.elems_in_batch != 1 and len(graph_info_list) % self.net.elems_in_batch != 0:
             # Делаем размер списка кратным elems_in_batch
-            additional_graph = graph_info_list[-1] # TODO: сейчас совсем простое решение
             additional_count = self.net.elems_in_batch - (len(graph_info_list) % self.net.elems_in_batch)
             for _ in range(additional_count):
-                graph_info_list.append(deepcopy(additional_graph))
+                empty_graph = HeteroData()
+                empty_graph['node']['x'] = torch.tensor([])
+                empty_graph.to(self.net.device)
+                graph_info_list.append(deepcopy(empty_graph))
             time_logger.info(f"Time of addiional graph creating: {time.time() - ts}")
 
         graph_loader = DataLoader(graph_info_list, batch_size=self.net.elems_in_batch, shuffle=False)
