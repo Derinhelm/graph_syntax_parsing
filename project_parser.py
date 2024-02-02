@@ -91,9 +91,7 @@ class Parser:
             config.dynamic_oracle_updates(best, shift_case)
             self.time_logger.info(f"Time of dynamic_oracle_updates: {time.time() - ts}")
 
-        ts = time.time()
         config.apply_transition(best)
-        self.time_logger.info(f"Time of apply_transition: {time.time() - ts}")
         return
 
     def Train(self, trainData):

@@ -35,6 +35,8 @@ class Configuration:
         return s
 
     def apply_transition(self, best):
+        time_logger = getLogger('time_logger')
+        ts = time.time()
         if best[1] == SHIFT:
             self.stack.roots.append(self.buffer.roots[0])
             del self.buffer.roots[0]
@@ -55,7 +57,8 @@ class Configuration:
             #attach
             child.pred_parent_id = parent.id
             child.pred_relation = best[0]
-        time_logger = getLogger('time_logger')
+        time_logger.info(f"Time of config apply_transition: {time.time() - ts}")
+
         ts = time.time()
         self.graph.apply_transition(best, self.sentence, \
                                                  self.stack, self.buffer)

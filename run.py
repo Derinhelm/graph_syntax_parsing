@@ -87,6 +87,6 @@ def run(traindata, valdata, testdata, embeds, hidden_dims=100, learning_rate=0.0
 
     info_logger.debug('Finished predicting')
     total_time = time.time() - ts
-    info_logger.info(f"Total time: {total_time:.2f}")
-    time_logger.info(f"Total time: {total_time:.2f}")
-    print(f"Total time: {total_time:.2f}")
+    info_logger.info(f"Time of all program: {total_time:.2f}")
+    time_logger.info(f"Time of all program: {total_time:.2f}")
+    print(f"Total time of the program: {total_time:.2f}")
