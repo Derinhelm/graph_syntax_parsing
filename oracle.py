@@ -7,6 +7,7 @@ import time
 import torch
 from torch_geometric.data import HeteroData
 from torch_geometric.loader import DataLoader
+import tqdm
 
 from constants import LEFT_ARC, RIGHT_ARC, SHIFT, SWAP
 from gnn import GNNNet
@@ -95,11 +96,9 @@ class Scores:
         swap_valid, swap_wrong, swap_cost = self._calculate_swap_scores(config)
         time_logger.info(f"Time of score calculating: {time.time() - ts}")
 
-        ts = time.time()
         valid = chain(left_valid, right_valid, shift_valid, swap_valid)
         wrong = chain(left_wrong, right_wrong, shift_wrong, swap_wrong, [(None, 4, -float('inf'))])
         # (None, 4, -float('inf')) is used to ensure that at least one element will be.
-        time_logger.info(f"Time of chain creating: {time.time() - ts}")
 
         return valid, wrong, shift_case, swap_cost
 
@@ -143,15 +142,11 @@ class Scores:
         best_valid = max(valid, key=itemgetter(2))
         best_wrong = max(wrong, key=itemgetter(2))
         time_logger.info(f"Time of max for valid/wrong: {time.time() - ts}")
-        ts = time.time()
         best = self.choose_best(best_valid, best_wrong, swap_cost, dynamic_oracle)
-        time_logger.info(f"Time of choose_best: {time.time() - ts}")
         ts = time.time()
         error_info.error_append(best, best_valid, best_wrong, config)
         time_logger.info(f"Time of error_append: {time.time() - ts}")
-        ts = time.time()
         #self.transition_logging(valid_copy, wrong_copy, best_valid, best_wrong)
-        time_logger.info(f"Time of transition_logging: {time.time() - ts}")
         return best, shift_case
 
     def test_evaluate(self, config, irels):
@@ -259,7 +254,7 @@ class Oracle:
         time_logger = getLogger('time_logger')
         scrs_list = []
         uscrs_list = []
-        print("config_list len:", len(config_list))
+        #print("config_list len:", len(config_list))
         graph_info_list = [config.graph.get_graph() for config in config_list]
         real_graph_count = len(graph_info_list)
         ts = time.time()
@@ -274,6 +269,13 @@ class Oracle:
             time_logger.info(f"Time of additional graph creating: {time.time() - ts}")
 
         graph_loader = DataLoader(graph_info_list, batch_size=self.net.elems_in_batch, shuffle=False)
+        pbar = tqdm.tqdm(
+            graph_loader,
+            desc="Batch processing",
+            unit="batch",
+            mininterval=1.0,
+            leave=False,
+        )
         for batch in graph_loader:
             #ts = time.time()
             cur_scrs, cur_uscrs = self.net.evaluate(batch)

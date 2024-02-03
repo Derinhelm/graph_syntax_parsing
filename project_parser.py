@@ -87,9 +87,7 @@ class Parser:
     def train_transition_processing(self, config, best, shift_case):
         #updates for the dynamic oracle
         if self.dynamic_oracle:
-            ts = time.time()
             config.dynamic_oracle_updates(best, shift_case)
-            self.time_logger.info(f"Time of dynamic_oracle_updates: {time.time() - ts}")
 
         config.apply_transition(best)
         return
@@ -105,7 +103,9 @@ class Parser:
         for sentence in trainData:
             config = Configuration(sentence, self.oracle.irels, self.embeds, self.device)
             config_to_predict_list.append(config)
+        iter_num = 0
         while len(config_to_predict_list) != 0:
+            print(iter_num, len(config_to_predict_list))
             best_transition_list = self.oracle.create_train_transition(config_to_predict_list, self.dynamic_oracle)
             new_config_to_predict_list = []
             for i in range(len(config_to_predict_list)):
@@ -121,6 +121,7 @@ class Parser:
                 if not config.is_end():
                     new_config_to_predict_list.append(config)
             config_to_predict_list = new_config_to_predict_list
+            iter_num += 1
 
         ts = time.time()
         self.oracle.error_processing(True)
