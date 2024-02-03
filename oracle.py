@@ -96,18 +96,6 @@ class Scores:
         time_logger.info(f"Time of score calculating: {time.time() - ts}")
 
         ts = time.time()
-        transition_logger = getLogger('transition_logger')
-        transition_logger.info("left_valid:" + str(left_valid))
-        transition_logger.info("left_wrong:" + str(left_wrong))
-        transition_logger.info("right_valid:" + str(right_valid))
-        transition_logger.info("right_wrong:" + str(right_wrong))
-        transition_logger.info("shift_valid:" + str(shift_valid))
-        transition_logger.info("shift_wrong:" + str(shift_wrong))
-        transition_logger.info("swap_valid:" + str(swap_valid))
-        transition_logger.info("swap_wrong:" + str(swap_wrong))
-        time_logger.info(f"Time of create_valid_wrong transition logging: {time.time() - ts}")
-
-        ts = time.time()
         valid = chain(left_valid, right_valid, shift_valid, swap_valid)
         wrong = chain(left_wrong, right_wrong, shift_wrong, swap_wrong, [(None, 4, -float('inf'))])
         # (None, 4, -float('inf')) is used to ensure that at least one element will be.
