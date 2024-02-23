@@ -25,7 +25,7 @@ class Configuration:
         for i in range(len(self.sentence) - 1): # Last element is a technical root element.
             self.word_embeds[i + 1] = embeds[self.sentence[i].lemma] # Word number id starts from 1 in the graph.
 
-        self.graph = ConfigGraph(self.sentence, self.stack, self.buffer, self.word_embeds, device)
+        self.graph = ConfigGraph(self.sentence, self.word_embeds, device)
 
     def __str__(self):
         s = "Config.\nsentence: " + ", ".join(map(str, self.sentence)) + "\n"
@@ -38,32 +38,47 @@ class Configuration:
         time_logger = getLogger('time_logger')
         ts = time.time()
         if best[1] == SHIFT:
+            buf_0 = self.buffer.roots[0].id
+            buf_1 = self.buffer.roots[1].id
+            stack_last = self.stack.roots[-1].id if self.stack.roots != [] else None
+
             self.stack.roots.append(self.buffer.roots[0])
             del self.buffer.roots[0]
+            ts = time.time()
+            self.graph.apply_shift(buf_0, buf_1, stack_last)
+            time_logger.info(f"Time of graph apply_transition: {time.time() - ts}")
 
         elif best[1] == SWAP:
             child = self.stack.roots.pop()
+            child_id = child.id
+            stack_new_last_id = self.stack.roots[-1].id if len(self.stack.roots) != 0 else None
+            buf_0_old_id = self.buffer.roots[0].id
+            buf_1_old_id = self.buffer.roots[1].id if len(self.buffer.roots) > 1 else None
             self.buffer.roots.insert(1,child)
+            ts = time.time()
+            self.graph.apply_swap(buf_0_old_id, buf_1_old_id, stack_new_last_id, child_id)
+            time_logger.info(f"Time of graph apply_transition: {time.time() - ts}")
+
 
         elif best[1] == LEFT_ARC:
             child = self.stack.roots.pop()
+            stack_new_last_id = self.stack.roots[-1].id if len(self.stack.roots) != 0 else None
             parent = self.buffer.roots[0]
+            ts = time.time()
+            self.graph.apply_left_arc(parent.id, child.id, stack_new_last_id, child.pred_relation)
+            time_logger.info(f"Time of graph apply_transition: {time.time() - ts}")
 
         elif best[1] == RIGHT_ARC:
             child = self.stack.roots.pop()
             parent = self.stack.roots[-1]
+            ts = time.time()
+            self.graph.apply_right_arc(parent.id, child.id, child.pred_relation)
+            time_logger.info(f"Time of graph apply_transition: {time.time() - ts}")
 
         if best[1] == LEFT_ARC or best[1] == RIGHT_ARC:
             #attach
             child.pred_parent_id = parent.id
             child.pred_relation = best[0]
-        time_logger.info(f"Time of config apply_transition: {time.time() - ts}")
-
-        ts = time.time()
-        self.graph.apply_transition(best, self.sentence, \
-                                                 self.stack, self.buffer)
-        time_logger.info(f"Time of graph apply_transition: {time.time() - ts}")
-
 
     def get_stack_ids(self):
         return [sitem.id for sitem in self.stack.roots]
