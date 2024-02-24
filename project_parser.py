@@ -19,7 +19,7 @@ class Parser:
         self.embeds = embeds
         self.info_logger = getLogger('info_logger')
         self.time_logger = getLogger('time_logger')
-        self.transition_logger = getLogger('transition_logger')
+        #self.transition_logger = getLogger('transition_logger')
 
     def Load(self, epoch):
         self.oracle.Load(epoch)
@@ -111,9 +111,9 @@ class Parser:
             for i in range(len(config_to_predict_list)):
                 config = config_to_predict_list[i]
                 best, shift_case = best_transition_list[i]
-                self.transition_logger.info("--------------------")
-                self.transition_logger.info(str(config))
-                self.transition_logger.info("best transition:" + str(best))
+                #self.transition_logger.info("--------------------")
+                #self.transition_logger.info(str(config))
+                #self.transition_logger.info("best transition:" + str(best))
                 self.train_transition_processing(config, best, shift_case)
                 ts = time.time()
                 self.oracle.error_processing(False)

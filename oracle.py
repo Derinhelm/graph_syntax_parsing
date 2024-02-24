@@ -124,12 +124,12 @@ class Scores:
         valid = deepcopy(valid_chain)
         wrong = deepcopy(wrong_chain)
         time_logger.info(f"Time of chain copying: {time.time() - ts}")
-        transition_logger = getLogger('transition_logger')
-        transition_logger.info("scrs:" + str(self.scrs))
-        transition_logger.info("uscrs:" + str(self.uscrs))
-        transition_logger.info("valid:" + str(list(valid)))
-        transition_logger.info("wrong:" + str(list(wrong)))
-        transition_logger.info("best_valid:" + str(best_valid) + ", best_wrong:" + str(best_wrong))
+        #transition_logger = getLogger('transition_logger')
+        #transition_logger.info("scrs:" + str(self.scrs))
+        #transition_logger.info("uscrs:" + str(self.uscrs))
+        #transition_logger.info("valid:" + str(list(valid)))
+        #transition_logger.info("wrong:" + str(list(wrong)))
+        #transition_logger.info("best_valid:" + str(best_valid) + ", best_wrong:" + str(best_wrong))
 
     def create_best_transaction(self, config, dynamic_oracle, error_info, irels):
         time_logger = getLogger('time_logger')
@@ -200,15 +200,15 @@ class ErrorInfo:
                 if child.pred_parent_id != child.parent_id:
                     self.train_info["eerrors"] += 1
         
-        transition_logger = getLogger('transition_logger')
+        #transition_logger = getLogger('transition_logger')
         if bestValid[2] < bestWrong[2] + 1.0:
             loss = bestWrong[2] - bestValid[2]
             self.train_info["mloss"] += 1.0 + bestWrong[2] - bestValid[2]
             self.train_info["eloss"] += 1.0 + bestWrong[2] - bestValid[2]
             self.train_info["errs"].append(loss)
-            transition_logger.info("loss:" + str(loss))
-        else:
-            transition_logger.info("no loss")
+            #transition_logger.info("loss:" + str(loss))
+        #else:
+            #transition_logger.info("no loss")
 
         #??? when did this happen and why?
         if best[1] == 0 or best[1] == 2:
