@@ -88,13 +88,13 @@ class Scores:
         return swap_valid_scores, swap_wrong_scores, swap_cost
 
     def create_valid_wrong(self, config, irels):
-        time_logger = getLogger('time_logger')
-        ts = time.time()
+        #time_logger = getLogger('time_logger')
+        #ts = time.time()
         left_valid, left_wrong = self._calculate_left_scores(config, irels)
         right_valid, right_wrong = self._calculate_right_scores(config, irels)
         shift_valid, shift_wrong, shift_case = self._calculate_shift_scores(config)
         swap_valid, swap_wrong, swap_cost = self._calculate_swap_scores(config)
-        time_logger.info(f"Time of score calculating: {time.time() - ts}")
+        #time_logger.info(f"Time of score calculating: {time.time() - ts}")
 
         valid = chain(left_valid, right_valid, shift_valid, swap_valid)
         wrong = chain(left_wrong, right_wrong, shift_wrong, swap_wrong, [(None, 4, -float('inf'))])
@@ -119,11 +119,11 @@ class Scores:
         return best
 
     def transition_logging(self, valid_chain, wrong_chain, best_valid, best_wrong):
-        time_logger = getLogger('time_logger')
-        ts = time.time()
+        #time_logger = getLogger('time_logger')
+        #ts = time.time()
         valid = deepcopy(valid_chain)
         wrong = deepcopy(wrong_chain)
-        time_logger.info(f"Time of chain copying: {time.time() - ts}")
+        #time_logger.info(f"Time of chain copying: {time.time() - ts}")
         #transition_logger = getLogger('transition_logger')
         #transition_logger.info("scrs:" + str(self.scrs))
         #transition_logger.info("uscrs:" + str(self.uscrs))
@@ -132,20 +132,20 @@ class Scores:
         #transition_logger.info("best_valid:" + str(best_valid) + ", best_wrong:" + str(best_wrong))
 
     def create_best_transaction(self, config, dynamic_oracle, error_info, irels):
-        time_logger = getLogger('time_logger')
-        ts = time.time()
+        #time_logger = getLogger('time_logger')
+        #ts = time.time()
         valid, wrong, shift_case, swap_cost = self.create_valid_wrong(config, irels)
-        time_logger.info(f"Time of create_valid_wrong: {time.time() - ts}")
+        #time_logger.info(f"Time of create_valid_wrong: {time.time() - ts}")
 
 
-        ts = time.time()
+        #ts = time.time()
         best_valid = max(valid, key=itemgetter(2))
         best_wrong = max(wrong, key=itemgetter(2))
-        time_logger.info(f"Time of max for valid/wrong: {time.time() - ts}")
+        #time_logger.info(f"Time of max for valid/wrong: {time.time() - ts}")
         best = self.choose_best(best_valid, best_wrong, swap_cost, dynamic_oracle)
-        ts = time.time()
+        #ts = time.time()
         error_info.error_append(best, best_valid, best_wrong, config)
-        time_logger.info(f"Time of error_append: {time.time() - ts}")
+        #time_logger.info(f"Time of error_append: {time.time() - ts}")
         #self.transition_logging(valid_copy, wrong_copy, best_valid, best_wrong)
         return best, shift_case
 
@@ -251,13 +251,13 @@ class Oracle:
         self.error_info = ErrorInfo()
 
     def _evaluate(self, config_list):
-        time_logger = getLogger('time_logger')
+        #time_logger = getLogger('time_logger')
         scrs_list = []
         uscrs_list = []
         #print("config_list len:", len(config_list))
         graph_info_list = [config.graph.get_graph() for config in config_list]
         real_graph_count = len(graph_info_list)
-        ts = time.time()
+        #ts = time.time()
         if self.net.elems_in_batch != 1 and len(graph_info_list) % self.net.elems_in_batch != 0:
             # Делаем размер списка кратным elems_in_batch
             additional_count = self.net.elems_in_batch - (len(graph_info_list) % self.net.elems_in_batch)
@@ -266,7 +266,7 @@ class Oracle:
                 empty_graph['node']['x'] = torch.tensor([])
                 empty_graph.to(self.net.device)
                 graph_info_list.append(deepcopy(empty_graph))
-            time_logger.info(f"Time of additional graph creating: {time.time() - ts}")
+            #time_logger.info(f"Time of additional graph creating: {time.time() - ts}")
 
         graph_loader = DataLoader(graph_info_list, batch_size=self.net.elems_in_batch, shuffle=False)
         pbar = tqdm.tqdm(
@@ -300,14 +300,14 @@ class Oracle:
         return best_transition_list
 
     def create_train_transition(self, config_to_predict_list, dynamic_oracle):
-        time_logger = getLogger('time_logger')
+        #time_logger = getLogger('time_logger')
         best_transition_list = []
         scrs_list, uscrs_list = self._evaluate(config_to_predict_list)
         for i in range(len(config_to_predict_list)):
             config = config_to_predict_list[i]
             scrs, uscrs = scrs_list[i], uscrs_list[i]
 
-            ts = time.time()
+            #ts = time.time()
             scores_info = Scores(scrs, uscrs)
             best, shift_case = scores_info.create_best_transaction(config, dynamic_oracle, self.error_info, self.irels)
             #time_logger.info(f"Time of create_best+: {time.time() - ts}")

@@ -115,9 +115,9 @@ class Parser:
                 #self.transition_logger.info(str(config))
                 #self.transition_logger.info("best transition:" + str(best))
                 self.train_transition_processing(config, best, shift_case)
-                ts = time.time()
+                #ts = time.time()
                 self.oracle.error_processing(False)
-                self.time_logger.info(f"Time of error_processing: {time.time() - ts}")
+                #self.time_logger.info(f"Time of error_processing: {time.time() - ts}")
                 if not config.is_end():
                     new_config_to_predict_list.append(config)
             config_to_predict_list = new_config_to_predict_list
@@ -125,9 +125,9 @@ class Parser:
             if iter_num > 1:
                 break
 
-        ts = time.time()
+        #ts = time.time()
         self.oracle.error_processing(True)
-        self.time_logger.info(f"Time of error_processing: {time.time() - ts}")
+        #self.time_logger.info(f"Time of error_processing: {time.time() - ts}")
 
         mloss = self.oracle.get_mloss()
 

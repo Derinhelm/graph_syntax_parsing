@@ -35,8 +35,8 @@ class Configuration:
         return s
 
     def apply_transition(self, best):
-        time_logger = getLogger('time_logger')
-        ts = time.time()
+        #time_logger = getLogger('time_logger')
+        #ts = time.time()
         if best[1] == SHIFT:
             buf_0 = self.buffer.roots[0].id
             buf_1 = self.buffer.roots[1].id
@@ -44,9 +44,9 @@ class Configuration:
 
             self.stack.roots.append(self.buffer.roots[0])
             del self.buffer.roots[0]
-            ts = time.time()
+            #ts = time.time()
             self.graph.apply_shift(buf_0, buf_1, stack_last)
-            time_logger.info(f"Time of graph apply_transition: {time.time() - ts}")
+            #time_logger.info(f"Time of graph apply_transition: {time.time() - ts}")
 
         elif best[1] == SWAP:
             child = self.stack.roots.pop()
@@ -55,25 +55,25 @@ class Configuration:
             buf_0_old_id = self.buffer.roots[0].id
             buf_1_old_id = self.buffer.roots[1].id if len(self.buffer.roots) > 1 else None
             self.buffer.roots.insert(1,child)
-            ts = time.time()
+            #ts = time.time()
             self.graph.apply_swap(buf_0_old_id, buf_1_old_id, stack_new_last_id, child_id)
-            time_logger.info(f"Time of graph apply_transition: {time.time() - ts}")
+            #time_logger.info(f"Time of graph apply_transition: {time.time() - ts}")
 
 
         elif best[1] == LEFT_ARC:
             child = self.stack.roots.pop()
             stack_new_last_id = self.stack.roots[-1].id if len(self.stack.roots) != 0 else None
             parent = self.buffer.roots[0]
-            ts = time.time()
+            #ts = time.time()
             self.graph.apply_left_arc(parent.id, child.id, stack_new_last_id, child.pred_relation)
-            time_logger.info(f"Time of graph apply_transition: {time.time() - ts}")
+            #time_logger.info(f"Time of graph apply_transition: {time.time() - ts}")
 
         elif best[1] == RIGHT_ARC:
             child = self.stack.roots.pop()
             parent = self.stack.roots[-1]
-            ts = time.time()
+            #ts = time.time()
             self.graph.apply_right_arc(parent.id, child.id, child.pred_relation)
-            time_logger.info(f"Time of graph apply_transition: {time.time() - ts}")
+            #time_logger.info(f"Time of graph apply_transition: {time.time() - ts}")
 
         if best[1] == LEFT_ARC or best[1] == RIGHT_ARC:
             #attach
