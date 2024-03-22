@@ -256,18 +256,6 @@ class Oracle:
         uscrs_list = []
         #print("config_list len:", len(config_list))
         graph_info_list = [config.graph.get_graph() for config in config_list]
-        real_graph_count = len(graph_info_list)
-        #ts = time.time()
-        if self.net.elems_in_batch != 1 and len(graph_info_list) % self.net.elems_in_batch != 0:
-            # Делаем размер списка кратным elems_in_batch
-            additional_count = self.net.elems_in_batch - (len(graph_info_list) % self.net.elems_in_batch)
-            for _ in range(additional_count):
-                empty_graph = HeteroData()
-                empty_graph['node']['x'] = torch.tensor([])
-                empty_graph.to(self.net.device)
-                graph_info_list.append(deepcopy(empty_graph))
-            #time_logger.info(f"Time of additional graph creating: {time.time() - ts}")
-
         graph_loader = DataLoader(graph_info_list, batch_size=self.net.elems_in_batch, shuffle=False)
         pbar = tqdm.tqdm(
             graph_loader,
@@ -282,8 +270,6 @@ class Oracle:
             #time_logger.info(f"Time of net.evaluate: {time.time() - ts}")
             scrs_list += cur_scrs
             uscrs_list += cur_uscrs
-        scrs_list = scrs_list[:real_graph_count]
-        uscrs_list = uscrs_list[:real_graph_count]
         return scrs_list, uscrs_list
 
     def create_test_transition(self, config_to_predict_list):
