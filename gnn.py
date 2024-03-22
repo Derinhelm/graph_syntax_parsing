@@ -2,6 +2,7 @@ from copy import deepcopy
 from logging import getLogger
 import time
 import torch
+from torch_geometric.utils import scatter
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
@@ -32,13 +33,13 @@ class GNNNet:
                                      ('node', 'buffer', 'node')])
         self.unlabeled_res_size = 4 # for a single element in batch
         self.unlabeled_GNN = GNNBlock(hidden_channels=self.hidden_dims, out_channels=\
-                                                            self.unlabeled_res_size * self.elems_in_batch)
+                                                            self.unlabeled_res_size)
         self.unlabeled_GNN = to_hetero(self.unlabeled_GNN, self.metadata, aggr='sum')
         self.unlabeled_GNN.to(self.device)
 
         self.labeled_res_size = 2 * self.out_irels_dims + 2 # for a single element in batch
         self.labeled_GNN = GNNBlock(hidden_channels=self.hidden_dims, \
-                                    out_channels=self.labeled_res_size * self.elems_in_batch)
+                                    out_channels=self.labeled_res_size)
         self.labeled_GNN = to_hetero(self.labeled_GNN, self.metadata, aggr='sum')
         self.labeled_GNN.to(self.device)
 
@@ -51,9 +52,9 @@ class GNNNet:
         unlab_path = 'models/model_unlab' + '_' + str(epoch)
         lab_path = 'models/model_lab' + '_' + str(epoch)
 
-        self.unlabeled_GNN = GNNBlock(hidden_channels=self.hidden_dims, out_channels=self.unlabeled_res_size * self.elems_in_batch)
+        self.unlabeled_GNN = GNNBlock(hidden_channels=self.hidden_dims, out_channels=self.unlabeled_res_size)
         self.labeled_GNN = GNNBlock(hidden_channels=self.hidden_dims, \
-                                    out_channels=self.labeled_res_size * self.elems_in_batch)
+                                    out_channels=self.labeled_res_size)
 
         unlab_checkpoint = torch.load(unlab_path)
         self.unlabeled_GNN.load_state_dict(unlab_checkpoint['model_state_dict'], strict=False)
@@ -89,15 +90,11 @@ class GNNNet:
         uscrs_clone = uscrs['node'].clone()
         time_logger.info(f"Time of clone for unlabeled: {time.time() - ts}")
         ts = time.time()
-        uscrs_sum = torch.sum(uscrs_clone, dim=0)
+        uscrs_sum = scatter(uscrs_clone, graph['node'].batch, dim=0, reduce='mean')
         time_logger.info(f"Time of sum for unlabeled: {time.time() - ts}")
         ts = time.time()
         uscrs = uscrs_sum.detach().cpu()
         time_logger.info(f"Time of detach_cpu for unlabeled: {time.time() - ts}")
-        ts = time.time()
-        uscrs = uscrs.reshape((self.elems_in_batch, self.unlabeled_res_size))
-        time_logger.info(f"Time of reshape for unlabeled: {time.time() - ts}")
-
         #ts = time.time()
         scrs = self.labeled_GNN(*graph_info)
         #time_logger.info(f"Time of labeled_GNN: {time.time() - ts}")
@@ -105,14 +102,11 @@ class GNNNet:
         scrs_clone = scrs['node'].clone()
         time_logger.info(f"Time of clone for labeled: {time.time() - ts}")
         ts = time.time()
-        scrs_sum = torch.sum(scrs_clone, dim=0)
+        scrs_sum = scatter(scrs_clone, graph['node'].batch, dim=0, reduce='mean')
         time_logger.info(f"Time of sum for labeled: {time.time() - ts}")
         ts = time.time()
         scrs = scrs_sum.detach().cpu()
         time_logger.info(f"Time of sum for labeled: {time.time() - ts}")
-        ts = time.time()
-        scrs = scrs.reshape((self.elems_in_batch, self.labeled_res_size))
-        time_logger.info(f"Time of reshape for labeled: {time.time() - ts}")
         return list(scrs), list(uscrs)
 
     def error_processing(self, errs):
