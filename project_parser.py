@@ -117,8 +117,6 @@ class Parser:
                     new_config_to_predict_list.append(config)
             config_to_predict_list = new_config_to_predict_list
             iter_num += 1
-            if iter_num > 1:
-                break
         self.oracle.error_processing(True)
         mloss = self.oracle.get_mloss()
 
