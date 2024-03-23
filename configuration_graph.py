@@ -136,10 +136,8 @@ class ConfigGraph:
       if not existence_flag:
         print("No edge", node_from_id, node_to_id)
       else:
-        first_part = torch.cat((edge_storage[0][:i], edge_storage[0][i + 1:]))
-        second_part = torch.cat((edge_storage[1][:i], edge_storage[1][i + 1:]))
-        all_parts = torch.stack((first_part, second_part))
-        self.data[edge_type].edge_index = all_parts
+        self.data[edge_type].edge_index = \
+          torch.cat((edge_storage[:,:i], edge_storage[:,i + 1:]), dim=1)
 
     def add_stack_edge(self, node_from_id, node_to_id):
       if node_to_id is None:
@@ -157,11 +155,10 @@ class ConfigGraph:
 
     def add_edge(self, edge_type, node_from_id, node_to_id):
       edge_storage = self.data[edge_type].edge_index
-      first_part = torch.cat((edge_storage[0], torch.tensor([node_from_id]).to(self.device)))
-      second_part = torch.cat((edge_storage[1], torch.tensor([node_to_id]).to(self.device)))
-      all_parts = torch.stack((first_part, second_part))
-      self.data[edge_type].edge_index = all_parts
-
+      new_edge = torch.tensor([[node_from_id], [node_to_id]],
+                              dtype=torch.int32).to(self.device)
+      new_graph_index = torch.cat((edge_storage, new_edge), dim=1)
+      self.data[edge_type].edge_index = new_graph_index
 
     def visualise(self):
       nx_graph = nx.MultiDiGraph()
