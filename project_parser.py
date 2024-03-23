@@ -111,24 +111,15 @@ class Parser:
             for i in range(len(config_to_predict_list)):
                 config = config_to_predict_list[i]
                 best, shift_case = best_transition_list[i]
-                #self.transition_logger.info("--------------------")
-                #self.transition_logger.info(str(config))
-                #self.transition_logger.info("best transition:" + str(best))
                 self.train_transition_processing(config, best, shift_case)
-                #ts = time.time()
                 self.oracle.error_processing(False)
-                #self.time_logger.info(f"Time of error_processing: {time.time() - ts}")
                 if not config.is_end():
                     new_config_to_predict_list.append(config)
             config_to_predict_list = new_config_to_predict_list
             iter_num += 1
             if iter_num > 1:
                 break
-
-        #ts = time.time()
         self.oracle.error_processing(True)
-        #self.time_logger.info(f"Time of error_processing: {time.time() - ts}")
-
         mloss = self.oracle.get_mloss()
 
         self.info_logger.info(f"Loss: {mloss / len(trainData)}")

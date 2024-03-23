@@ -68,8 +68,6 @@ class GNNNet:
         self.unlabeled_GNN.to(self.device)
         self.labeled_GNN.to(self.device)
 
-
-
     def Save(self, epoch):
         info_logger = getLogger('info_logger')
         unlab_path = 'models/model_unlab' + '_' + str(epoch)
@@ -82,40 +80,21 @@ class GNNNet:
 
     def evaluate(self, graph):
         graph_info = graph.x_dict, graph.edge_index_dict
-        time_logger = getLogger('time_logger')
-        #ts = time.time()
         uscrs = self.unlabeled_GNN(*graph_info)
-        #time_logger.info(f"Time of unlabeled_GNN: {time.time() - ts}")
-        ts = time.time()
         uscrs_clone = uscrs['node'].clone()
-        time_logger.info(f"Time of clone for unlabeled: {time.time() - ts}")
-        ts = time.time()
         uscrs_sum = scatter(uscrs_clone, graph['node'].batch, dim=0, reduce='mean')
-        time_logger.info(f"Time of sum for unlabeled: {time.time() - ts}")
-        ts = time.time()
         uscrs = uscrs_sum.detach().cpu()
-        time_logger.info(f"Time of detach_cpu for unlabeled: {time.time() - ts}")
-        #ts = time.time()
+
         scrs = self.labeled_GNN(*graph_info)
-        #time_logger.info(f"Time of labeled_GNN: {time.time() - ts}")
-        ts = time.time()
         scrs_clone = scrs['node'].clone()
-        time_logger.info(f"Time of clone for labeled: {time.time() - ts}")
-        ts = time.time()
         scrs_sum = scatter(scrs_clone, graph['node'].batch, dim=0, reduce='mean')
-        time_logger.info(f"Time of sum for labeled: {time.time() - ts}")
-        ts = time.time()
         scrs = scrs_sum.detach().cpu()
-        time_logger.info(f"Time of sum for labeled: {time.time() - ts}")
         return list(scrs), list(uscrs)
 
     def error_processing(self, errs):
         self.labeled_optimizer.zero_grad()
         self.unlabeled_optimizer.zero_grad()
         eerrs = torch.sum(torch.tensor(errs, requires_grad=True))
-        transition_logger = getLogger('transition_logger')
         eerrs.backward()
         self.labeled_optimizer.step() # TODO Какой из оптимизаторов ???
         self.unlabeled_optimizer.step()
-        transition_logger.info("eerrs sum:" + str(eerrs.clone().detach()))
-        transition_logger.info("eerrs:" + str(errs))

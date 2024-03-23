@@ -166,7 +166,7 @@ def read_conll(filename, drop_nproj=False, train=True):
     info_logger.debug(f'{sents_read} sentences read')
 
     te = time.time()
-    info_logger.info(f'Time: {te-ts:.2g}s')
+    info_logger.info(f'Embedding downloading time: {te-ts:.2g}s')
     return sentences, words
 
 

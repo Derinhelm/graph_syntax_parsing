@@ -88,13 +88,10 @@ class Scores:
         return swap_valid_scores, swap_wrong_scores, swap_cost
 
     def create_valid_wrong(self, config, irels):
-        #time_logger = getLogger('time_logger')
-        #ts = time.time()
         left_valid, left_wrong = self._calculate_left_scores(config, irels)
         right_valid, right_wrong = self._calculate_right_scores(config, irels)
         shift_valid, shift_wrong, shift_case = self._calculate_shift_scores(config)
         swap_valid, swap_wrong, swap_cost = self._calculate_swap_scores(config)
-        #time_logger.info(f"Time of score calculating: {time.time() - ts}")
 
         valid = chain(left_valid, right_valid, shift_valid, swap_valid)
         wrong = chain(left_wrong, right_wrong, shift_wrong, swap_wrong, [(None, 4, -float('inf'))])
@@ -118,35 +115,12 @@ class Scores:
 
         return best
 
-    def transition_logging(self, valid_chain, wrong_chain, best_valid, best_wrong):
-        #time_logger = getLogger('time_logger')
-        #ts = time.time()
-        valid = deepcopy(valid_chain)
-        wrong = deepcopy(wrong_chain)
-        #time_logger.info(f"Time of chain copying: {time.time() - ts}")
-        #transition_logger = getLogger('transition_logger')
-        #transition_logger.info("scrs:" + str(self.scrs))
-        #transition_logger.info("uscrs:" + str(self.uscrs))
-        #transition_logger.info("valid:" + str(list(valid)))
-        #transition_logger.info("wrong:" + str(list(wrong)))
-        #transition_logger.info("best_valid:" + str(best_valid) + ", best_wrong:" + str(best_wrong))
-
     def create_best_transaction(self, config, dynamic_oracle, error_info, irels):
-        #time_logger = getLogger('time_logger')
-        #ts = time.time()
         valid, wrong, shift_case, swap_cost = self.create_valid_wrong(config, irels)
-        #time_logger.info(f"Time of create_valid_wrong: {time.time() - ts}")
-
-
-        #ts = time.time()
         best_valid = max(valid, key=itemgetter(2))
         best_wrong = max(wrong, key=itemgetter(2))
-        #time_logger.info(f"Time of max for valid/wrong: {time.time() - ts}")
         best = self.choose_best(best_valid, best_wrong, swap_cost, dynamic_oracle)
-        #ts = time.time()
         error_info.error_append(best, best_valid, best_wrong, config)
-        #time_logger.info(f"Time of error_append: {time.time() - ts}")
-        #self.transition_logging(valid_copy, wrong_copy, best_valid, best_wrong)
         return best, shift_case
 
     def test_evaluate(self, config, irels):
@@ -200,15 +174,11 @@ class ErrorInfo:
                 if child.pred_parent_id != child.parent_id:
                     self.train_info["eerrors"] += 1
         
-        #transition_logger = getLogger('transition_logger')
         if bestValid[2] < bestWrong[2] + 1.0:
             loss = bestWrong[2] - bestValid[2]
             self.train_info["mloss"] += 1.0 + bestWrong[2] - bestValid[2]
             self.train_info["eloss"] += 1.0 + bestWrong[2] - bestValid[2]
             self.train_info["errs"].append(loss)
-            #transition_logger.info("loss:" + str(loss))
-        #else:
-            #transition_logger.info("no loss")
 
         #??? when did this happen and why?
         if best[1] == 0 or best[1] == 2:
@@ -265,9 +235,7 @@ class Oracle:
             leave=False,
         )
         for batch in graph_loader:
-            #ts = time.time()
             cur_scrs, cur_uscrs = self.net.evaluate(batch)
-            #time_logger.info(f"Time of net.evaluate: {time.time() - ts}")
             scrs_list += cur_scrs
             uscrs_list += cur_uscrs
         return scrs_list, uscrs_list
@@ -292,11 +260,10 @@ class Oracle:
         for i in range(len(config_to_predict_list)):
             config = config_to_predict_list[i]
             scrs, uscrs = scrs_list[i], uscrs_list[i]
-
-            #ts = time.time()
             scores_info = Scores(scrs, uscrs)
-            best, shift_case = scores_info.create_best_transaction(config, dynamic_oracle, self.error_info, self.irels)
-            #time_logger.info(f"Time of create_best+: {time.time() - ts}")
+            best, shift_case = \
+                scores_info.create_best_transaction(config, dynamic_oracle,
+                                                    self.error_info, self.irels)
             best_transition_list.append((best, shift_case))
         return best_transition_list
 
