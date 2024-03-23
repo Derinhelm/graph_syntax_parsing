@@ -1,4 +1,5 @@
 from logging import getLogger
+import time
 
 from project_parser import Parser
 from utils import ConllEntry, get_irels
@@ -25,23 +26,26 @@ p = None
 
 def run(traindata, valdata, testdata, embeds, hidden_dims=100, learning_rate=0.001,\
         dynamic_oracle=True, epochs=10, first_epoch=1, info_logging=True, \
-        time_logging=True, transition_logging=True):
+        time_logging=True, transition_logging=True, elems_in_batch=1):
+    ts = time.time()
     options = {}
     options["hidden_dims"] = hidden_dims # MLP hidden layer dimensions
     options["learning_rate"] = learning_rate # Learning rate for neural network optimizer
 
-    options["dynamic_oracle"] = dynamic_oracle # Use the static oracle instead of the dynamic oracle
+    options["dynamic_oracle"] = dynamic_oracle
 
     options["epochs"] = epochs # Number of epochs
     options["first_epoch"] = first_epoch
+    options["elems_in_batch"] = elems_in_batch
+
     info_logger = getLogger('info_logger')
     time_logger = getLogger('time_logger')
     transition_logger = getLogger('transition_logger')
-    if not info_logging:
+    if not info_logging and len(info_logger.handlers) > 0:
         info_logger.removeHandler(info_logger.handlers[0])
-    if not time_logging:
+    if not time_logging and len(time_logger.handlers) > 0:
         time_logger.removeHandler(time_logger.handlers[0])
-    if not transition_logging:
+    if not transition_logging and len(transition_logger.handlers) > 0:
         transition_logger.removeHandler(transition_logger.handlers[0])
     irels = get_irels(traindata)
     info_logger.debug('Initializing the model')
@@ -82,3 +86,6 @@ def run(traindata, valdata, testdata, embeds, hidden_dims=100, learning_rate=0.0
 
 
     info_logger.debug('Finished predicting')
+    total_time = time.time() - ts
+    info_logger.info(f"Time of all program: {total_time:.2f}")
+    print(f"Total time of the program: {total_time:.2f}")

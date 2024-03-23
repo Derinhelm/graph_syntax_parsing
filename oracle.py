@@ -1,8 +1,13 @@
+from copy import deepcopy
 from itertools import chain
 from logging import getLogger
 from operator import itemgetter
 import random
 import time
+import torch
+from torch_geometric.data import HeteroData
+from torch_geometric.loader import DataLoader
+import tqdm
 
 from constants import LEFT_ARC, RIGHT_ARC, SHIFT, SWAP
 from gnn import GNNNet
@@ -91,6 +96,7 @@ class Scores:
         valid = chain(left_valid, right_valid, shift_valid, swap_valid)
         wrong = chain(left_wrong, right_wrong, shift_wrong, swap_wrong, [(None, 4, -float('inf'))])
         # (None, 4, -float('inf')) is used to ensure that at least one element will be.
+
         return valid, wrong, shift_case, swap_cost
 
     def choose_best(self, bestValid, bestWrong, swap_cost, dynamic_oracle):
@@ -109,19 +115,12 @@ class Scores:
 
         return best
 
-    def transition_logging(self, best_valid, best_wrong):
-        transition_logger = getLogger('transition_logger')
-        transition_logger.info("scrs:" + str(self.scrs))
-        transition_logger.info("uscrs:" + str(self.uscrs))
-        transition_logger.info("best_valid:" + str(best_valid) + ", best_wrong:" + str(best_wrong))
-
     def create_best_transaction(self, config, dynamic_oracle, error_info, irels):
         valid, wrong, shift_case, swap_cost = self.create_valid_wrong(config, irels)
         best_valid = max(valid, key=itemgetter(2))
         best_wrong = max(wrong, key=itemgetter(2))
         best = self.choose_best(best_valid, best_wrong, swap_cost, dynamic_oracle)
         error_info.error_append(best, best_valid, best_wrong, config)
-        self.transition_logging(best_valid, best_wrong)
         return best, shift_case
 
     def test_evaluate(self, config, irels):
@@ -174,7 +173,7 @@ class ErrorInfo:
                 #attachment error
                 if child.pred_parent_id != child.parent_id:
                     self.train_info["eerrors"] += 1
-
+        
         if bestValid[2] < bestWrong[2] + 1.0:
             loss = bestWrong[2] - bestValid[2]
             self.train_info["mloss"] += 1.0 + bestWrong[2] - bestValid[2]
@@ -221,25 +220,53 @@ class Oracle:
         self.irels = irels
         self.error_info = ErrorInfo()
 
-    def create_test_transition(self, config, iSwap, max_swap):
-        scrs, uscrs = self.net.evaluate(config.graph)
-        scores_info = Scores(scrs, uscrs)
-        scores = scores_info.test_evaluate(config, self.irels)
-        best = max(chain(*(scores if iSwap < max_swap else scores[:3] )), key = itemgetter(2) )
-        return best
+    def _evaluate(self, config_list):
+        #time_logger = getLogger('time_logger')
+        scrs_list = []
+        uscrs_list = []
+        #print("config_list len:", len(config_list))
+        graph_info_list = [config.graph.get_graph() for config in config_list]
+        graph_loader = DataLoader(graph_info_list, batch_size=self.net.elems_in_batch, shuffle=False)
+        pbar = tqdm.tqdm(
+            graph_loader,
+            desc="Batch processing",
+            unit="batch",
+            mininterval=1.0,
+            leave=False,
+        )
+        for batch in graph_loader:
+            cur_scrs, cur_uscrs = self.net.evaluate(batch)
+            scrs_list += cur_scrs
+            uscrs_list += cur_uscrs
+        return scrs_list, uscrs_list
 
-    def create_train_transition(self, config, dynamic_oracle):
-        time_logger = getLogger('time_logger')
+    def create_test_transition(self, config_to_predict_list):
+        best_transition_list = []
+        config_list = [config for config, _, _, _, _ in config_to_predict_list]
+        scrs_list, uscrs_list = self._evaluate(config_list)
+        for i in range(len(config_to_predict_list)):
+            config, _, max_swap, _, iSwap = config_to_predict_list[i]
+            scrs, uscrs = scrs_list[i], uscrs_list[i]
+            scores_info = Scores(scrs, uscrs)
+            scores = scores_info.test_evaluate(config, self.irels)
+            best = max(chain(*(scores if iSwap < max_swap else scores[:3] )), key = itemgetter(2) )
+            best_transition_list.append(best)
+        return best_transition_list
 
-        ts = time.time()
-        scrs, uscrs = self.net.evaluate(config.graph)
-        time_logger.info(f"Time of net.evaluate: {time.time() - ts}")
+    def create_train_transition(self, config_to_predict_list, dynamic_oracle):
+        #time_logger = getLogger('time_logger')
+        best_transition_list = []
+        scrs_list, uscrs_list = self._evaluate(config_to_predict_list)
+        for i in range(len(config_to_predict_list)):
+            config = config_to_predict_list[i]
+            scrs, uscrs = scrs_list[i], uscrs_list[i]
+            scores_info = Scores(scrs, uscrs)
+            best, shift_case = \
+                scores_info.create_best_transaction(config, dynamic_oracle,
+                                                    self.error_info, self.irels)
+            best_transition_list.append((best, shift_case))
+        return best_transition_list
 
-        ts = time.time()
-        scores_info = Scores(scrs, uscrs)
-        best, shift_case = scores_info.create_best_transaction(config, dynamic_oracle, self.error_info, self.irels)
-        time_logger.info(f"Time of create_best+: {time.time() - ts}")
-        return best, shift_case
 
     def error_processing(self, is_final):
         if self.error_info.processing_check(is_final):
