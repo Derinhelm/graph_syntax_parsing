@@ -27,17 +27,18 @@ def get_short_data(embed_pickle_using, prefix):
         embeds = create_embeds(all_words)
     return train, val, test, embeds
 
-def get_data(real_dataset=False, embed_pickle_using=True, colab=False):
+def get_data(real_dataset=False, embed_pickle_using=True,
+             colab=False, prefix=""):
 # colab=True - run on colab
     if colab:
         if real_dataset:
             return get_real_data(embed_pickle_using, \
-                                 '/content/graph_syntax_parsing/UD_Russian-SynTagRus/')
+                                 prefix + '/UD_Russian-SynTagRus/')
         else:
             return get_short_data(embed_pickle_using, \
-                                  '/content/graph_syntax_parsing/UD_Russian-SynTagRus-small/')
+                                  prefix + '/UD_Russian-SynTagRus-small/')
     else:
         if real_dataset:
-            return get_real_data(embed_pickle_using, 'UD_Russian-SynTagRus/')
+            return get_real_data(embed_pickle_using, prefix + 'UD_Russian-SynTagRus/')
         else:
-            return get_short_data(embed_pickle_using, 'UD_Russian-SynTagRus-small/')
+            return get_short_data(embed_pickle_using, prefix + 'UD_Russian-SynTagRus-small/')
