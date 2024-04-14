@@ -32,69 +32,51 @@ class GNNNet:
         self.metadata = (['node'], [('node', 'graph', 'node'), ('node', 'stack', 'node'),\
                                      ('node', 'buffer', 'node')])
         self.unlabeled_res_size = 4 # for a single element in batch
-        self.unlabeled_GNN = GNNBlock(hidden_channels=self.hidden_dims, out_channels=\
-                                                            self.unlabeled_res_size)
-        self.unlabeled_GNN = to_hetero(self.unlabeled_GNN, self.metadata, aggr='sum')
-        self.unlabeled_GNN.to(self.device)
-
         self.labeled_res_size = 2 * self.out_irels_dims + 2 # for a single element in batch
-        self.labeled_GNN = GNNBlock(hidden_channels=self.hidden_dims, \
-                                    out_channels=self.labeled_res_size)
-        self.labeled_GNN = to_hetero(self.labeled_GNN, self.metadata, aggr='sum')
-        self.labeled_GNN.to(self.device)
+        self.gnn = GNNBlock(hidden_channels=self.hidden_dims, \
+                            out_channels=self.unlabeled_res_size + \
+                                         self.labeled_res_size)
+        self.gnn = to_hetero(self.gnn, self.metadata, aggr='sum')
+        self.gnn.to(self.device)
 
-        self.unlabeled_optimizer = optim.Adam(self.unlabeled_GNN.parameters(), \
-                                              lr=options["learning_rate"])
-        self.labeled_optimizer = optim.Adam(self.labeled_GNN.parameters(), \
+        self.optimizer = optim.Adam(self.gnn.parameters(), \
                                             lr=options["learning_rate"])
 
     def Load(self, epoch):
-        unlab_path = 'models/model_unlab' + '_' + str(epoch)
-        lab_path = 'models/model_lab' + '_' + str(epoch)
+        gnn_path = 'models/model_gnn' + '_' + str(epoch)
 
-        self.unlabeled_GNN = GNNBlock(hidden_channels=self.hidden_dims, out_channels=self.unlabeled_res_size)
-        self.labeled_GNN = GNNBlock(hidden_channels=self.hidden_dims, \
-                                    out_channels=self.labeled_res_size)
-
-        unlab_checkpoint = torch.load(unlab_path)
-        self.unlabeled_GNN.load_state_dict(unlab_checkpoint['model_state_dict'], strict=False)
+        self.gnn = GNNBlock(hidden_channels=self.hidden_dims, \
+                            out_channels=self.unlabeled_res_size + \
+                                         self.labeled_res_size)
         
-        lab_checkpoint = torch.load(lab_path)
-        self.labeled_GNN.load_state_dict(lab_checkpoint['model_state_dict'], strict=False)
-        
-        self.unlabeled_GNN = to_hetero(self.unlabeled_GNN, self.metadata, aggr='sum')
-        self.labeled_GNN = to_hetero(self.labeled_GNN, self.metadata, aggr='sum')
-
-        self.unlabeled_GNN.to(self.device)
-        self.labeled_GNN.to(self.device)
+        gnn_checkpoint = torch.load(gnn_path)
+        self.gnn.load_state_dict(gnn_checkpoint['model_state_dict'], strict=False)
+        self.gnn = to_hetero(self.gnn, self.metadata, aggr='sum')
+        self.gnn.to(self.device)
 
     def Save(self, epoch):
         info_logger = getLogger('info_logger')
-        unlab_path = 'models/model_unlab' + '_' + str(epoch)
-        lab_path = 'models/model_lab' + '_' + str(epoch)
-        info_logger.info(f'Saving unlabeled model to {unlab_path}')
-        torch.save({'epoch': epoch, 'model_state_dict': self.unlabeled_GNN.state_dict()}, \
-                   unlab_path)
-        info_logger.info(f'Saving labeled model to {lab_path}')
-        torch.save({'epoch': epoch, 'model_state_dict': self.labeled_GNN.state_dict()}, lab_path)
+        gnn_path = 'models/model_gnn' + '_' + str(epoch)
+        info_logger.info(f'Saving gnn model to {gnn_path}')
+        torch.save({'epoch': epoch, 'model_state_dict': self.gnn.state_dict()}, \
+                   gnn_path)
 
     def evaluate(self, graph):
-        self.labeled_optimizer.zero_grad()
-        self.unlabeled_optimizer.zero_grad()
-        graph_info = graph.x_dict, graph.edge_index_dict
-        uscrs = self.unlabeled_GNN(*graph_info)
-        uscrs_clone = uscrs['node'].clone()
-        uscrs_sum = scatter(uscrs_clone, graph['node'].batch, dim=0, reduce='mean')
-        uscrs = uscrs_sum.detach().cpu()
+        self.optimizer.zero_grad()
 
-        scrs = self.labeled_GNN(*graph_info)
-        scrs_clone = scrs['node'].clone()
-        scrs_sum = scatter(scrs_clone, graph['node'].batch, dim=0, reduce='mean')
-        scrs = scrs_sum.detach().cpu()
-        return list(scrs), list(uscrs)
+        graph_info = graph.x_dict, graph.edge_index_dict
+        all_scrs_net = self.gnn(*graph_info)
+        all_scrs_clone = all_scrs_net['node'].clone()
+        all_scrs_sum = scatter(all_scrs_clone, graph['node'].batch, dim=0, reduce='mean')
+        all_scrs = all_scrs_sum.detach().cpu()
+        return list(all_scrs)
+
+    def get_scrs_uscrs(self, all_scrs):
+        uscrs = all_scrs[:self.unlabeled_res_size]
+        scrs = all_scrs[self.unlabeled_res_size:]
+        return scrs, uscrs
 
     def error_processing(self, errs):
         eerrs = torch.sum(torch.tensor(errs, requires_grad=True))
         eerrs.backward()
-        self.labeled_optimizer.step() # TODO Какой из оптимизаторов ???
-        self.unlabeled_optimizer.step()
+        self.optimizer.step()
