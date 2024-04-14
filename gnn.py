@@ -79,6 +79,8 @@ class GNNNet:
         torch.save({'epoch': epoch, 'model_state_dict': self.labeled_GNN.state_dict()}, lab_path)
 
     def evaluate(self, graph):
+        self.labeled_optimizer.zero_grad()
+        self.unlabeled_optimizer.zero_grad()
         graph_info = graph.x_dict, graph.edge_index_dict
         uscrs = self.unlabeled_GNN(*graph_info)
         uscrs_clone = uscrs['node'].clone()
@@ -92,8 +94,6 @@ class GNNNet:
         return list(scrs), list(uscrs)
 
     def error_processing(self, errs):
-        self.labeled_optimizer.zero_grad()
-        self.unlabeled_optimizer.zero_grad()
         eerrs = torch.sum(torch.tensor(errs, requires_grad=True))
         eerrs.backward()
         self.labeled_optimizer.step() # TODO Какой из оптимизаторов ???
