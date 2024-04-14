@@ -220,8 +220,9 @@ class Oracle:
         self.irels = irels
         self.error_info = ErrorInfo()
 
-    def _evaluate(self, config_list):
-        #time_logger = getLogger('time_logger')
+    def create_test_transition(self, config_to_predict_list):
+        best_transition_list = []
+        config_list = [config for config, _, _, _, _ in config_to_predict_list]
         scrs_list = []
         uscrs_list = []
         #print("config_list len:", len(config_list))
@@ -238,12 +239,6 @@ class Oracle:
             cur_scrs, cur_uscrs = self.net.evaluate(batch)
             scrs_list += cur_scrs
             uscrs_list += cur_uscrs
-        return scrs_list, uscrs_list
-
-    def create_test_transition(self, config_to_predict_list):
-        best_transition_list = []
-        config_list = [config for config, _, _, _, _ in config_to_predict_list]
-        scrs_list, uscrs_list = self._evaluate(config_list)
         for i in range(len(config_to_predict_list)):
             config, _, max_swap, _, iSwap = config_to_predict_list[i]
             scrs, uscrs = scrs_list[i], uscrs_list[i]
@@ -256,7 +251,22 @@ class Oracle:
     def create_train_transition(self, config_to_predict_list, dynamic_oracle):
         #time_logger = getLogger('time_logger')
         best_transition_list = []
-        scrs_list, uscrs_list = self._evaluate(config_to_predict_list)
+        scrs_list = []
+        uscrs_list = []
+        #print("config_list len:", len(config_list))
+        graph_info_list = [config.graph.get_graph() for config in config_to_predict_list]
+        graph_loader = DataLoader(graph_info_list, batch_size=self.net.elems_in_batch, shuffle=False)
+        pbar = tqdm.tqdm(
+            graph_loader,
+            desc="Batch processing",
+            unit="batch",
+            mininterval=1.0,
+            leave=False,
+        )
+        for batch in graph_loader:
+            cur_scrs, cur_uscrs = self.net.evaluate(batch)
+            scrs_list += cur_scrs
+            uscrs_list += cur_uscrs
         for i in range(len(config_to_predict_list)):
             config = config_to_predict_list[i]
             scrs, uscrs = scrs_list[i], uscrs_list[i]
