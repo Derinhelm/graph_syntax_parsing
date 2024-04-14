@@ -248,29 +248,12 @@ class Oracle:
             best_transition_list.append(best)
         return best_transition_list
 
-    def create_train_transition(self, config_to_predict_list, dynamic_oracle):
-        #time_logger = getLogger('time_logger')
+    def create_train_transition_batch(self, batch, batch_config_list, dynamic_oracle):
         best_transition_list = []
-        scrs_list = []
-        uscrs_list = []
-        #print("config_list len:", len(config_list))
-        graph_info_list = [config.graph.get_graph() for config in config_to_predict_list]
-        graph_loader = DataLoader(graph_info_list, batch_size=self.net.elems_in_batch, shuffle=False)
-        pbar = tqdm.tqdm(
-            graph_loader,
-            desc="Batch processing",
-            unit="batch",
-            mininterval=1.0,
-            leave=False,
-        )
-        for batch in graph_loader:
-            cur_scrs, cur_uscrs = self.net.evaluate(batch)
-            scrs_list += cur_scrs
-            uscrs_list += cur_uscrs
-        for i in range(len(config_to_predict_list)):
-            config = config_to_predict_list[i]
-            scrs, uscrs = scrs_list[i], uscrs_list[i]
-            scores_info = Scores(scrs, uscrs)
+        cur_scrs, cur_uscrs = self.net.evaluate(batch)
+        for i in range(len(cur_scrs)):
+            config = batch_config_list[i]
+            scores_info = Scores(cur_scrs[i], cur_uscrs[i])
             best, shift_case = \
                 scores_info.create_best_transaction(config, dynamic_oracle,
                                                     self.error_info, self.irels)
@@ -279,7 +262,7 @@ class Oracle:
 
 
     def error_processing(self, is_final):
-        if self.error_info.processing_check(is_final):
+        #if self.error_info.processing_check(is_final):
             errs = self.error_info.get_errs()
             self.net.error_processing(errs)
             self.error_info.set_errs()

@@ -3,6 +3,7 @@ from logging import getLogger
 import random
 import time
 import torch
+from torch_geometric.loader import DataLoader
 import tqdm
 
 from configuration import Configuration
@@ -106,15 +107,25 @@ class Parser:
         iter_num = 0
         while len(config_to_predict_list) != 0:
             print(iter_num, len(config_to_predict_list))
-            best_transition_list = self.oracle.create_train_transition(config_to_predict_list, self.dynamic_oracle)
+            graph_info_list = [config.graph.get_graph() for config in config_to_predict_list]
+            graph_loader = DataLoader(graph_info_list,
+                                      batch_size=self.oracle.net.elems_in_batch,
+                                      shuffle=False)
+            config_i = 0
             new_config_to_predict_list = []
-            for i in range(len(config_to_predict_list)):
-                config = config_to_predict_list[i]
-                best, shift_case = best_transition_list[i]
-                self.train_transition_processing(config, best, shift_case)
+            for batch in graph_loader:
+                batch_config_list = config_to_predict_list[config_i:config_i + len(batch)]
+                config_i += len(batch)
+                best_transition_batch_list = \
+                    self.oracle.create_train_transition_batch(batch,
+                                                              batch_config_list,
+                                                              self.dynamic_oracle)
+                for i, config in enumerate(batch_config_list):
+                    best, shift_case = best_transition_batch_list[i]
+                    self.train_transition_processing(config, best, shift_case)
+                    if not config.is_end():
+                        new_config_to_predict_list.append(config)
                 self.oracle.error_processing(False)
-                if not config.is_end():
-                    new_config_to_predict_list.append(config)
             config_to_predict_list = new_config_to_predict_list
             iter_num += 1
         self.oracle.error_processing(True)
