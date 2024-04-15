@@ -39,8 +39,10 @@ class GNNNet:
         self.gnn = to_hetero(self.gnn, self.metadata, aggr='sum')
         self.gnn.to(self.device)
 
-        self.optimizer = optim.Adam(self.gnn.parameters(), \
-                                            lr=options["learning_rate"])
+        #self.optimizer = optim.Adam(self.gnn.parameters(), \
+        #                                    lr=options["learning_rate"])
+        self.optimizer = optim.SGD(self.gnn.parameters(),
+                                         lr=options["learning_rate"], momentum=0.9)
 
     def Load(self, epoch):
         gnn_path = 'models/model_gnn' + '_' + str(epoch)
@@ -66,10 +68,10 @@ class GNNNet:
 
         graph_info = graph.x_dict, graph.edge_index_dict
         all_scrs_net = self.gnn(*graph_info)
-        all_scrs_clone = all_scrs_net['node'].clone()
-        all_scrs_sum = scatter(all_scrs_clone, graph['node'].batch, dim=0, reduce='mean')
-        all_scrs = all_scrs_sum.detach().cpu()
-        return list(all_scrs)
+        all_scrs_clone = all_scrs_net['node']
+        all_scrs = scatter(all_scrs_clone, graph['node'].batch, dim=0, reduce='mean')
+        detach_all_scrs = all_scrs.clone().detach().cpu()
+        return list(all_scrs), list(detach_all_scrs)
 
     def get_scrs_uscrs(self, all_scrs):
         uscrs = all_scrs[:self.unlabeled_res_size]
@@ -77,6 +79,8 @@ class GNNNet:
         return scrs, uscrs
 
     def error_processing(self, errs):
-        eerrs = torch.sum(torch.tensor(errs, requires_grad=True))
-        eerrs.backward()
-        self.optimizer.step()
+        if len(errs) != 0:
+            eerrs = torch.sum(torch.stack(errs))
+            eerrs.backward()
+            self.optimizer.step()
+

@@ -12,22 +12,25 @@ import tqdm
 from constants import LEFT_ARC, RIGHT_ARC, SHIFT, SWAP
 from gnn import GNNNet
 
-class Scores:
-    def __init__(self, scrs, uscrs):
+class TrainScores:
+    def __init__(self, scrs, uscrs, non_detach_scrs, non_detach_uscrs):
         self.scrs = scrs
         self.uscrs = uscrs
+        self.non_detach_scrs = non_detach_scrs
+        self.non_detach_uscrs = non_detach_uscrs
 
     def _calculate_left_scores(self, config, irels):
         left_arc_conditions = config.check_left_arc_conditions()
         if not left_arc_conditions:
             return [], []
         left_cost = config.calculate_left_cost()
-        left_scores = [(rel, LEFT_ARC, self.scrs[2 + j * 2] + self.uscrs[2]) \
+        left_scores = [(rel, LEFT_ARC, self.scrs[2 + j * 2] + self.uscrs[2], 
+                            self.non_detach_scrs[2 + j * 2] + self.non_detach_uscrs[2]) \
                     for j, rel in enumerate(irels)]
         if left_cost == 0:
-            left_valid_scores = [(rel, trans, sc) for (rel, trans, sc) in left_scores \
+            left_valid_scores = [(rel, trans, sc, non_detach_sc) for (rel, trans, sc, non_detach_sc) in left_scores \
                 if rel == config.get_stack_last_element().relation]
-            left_wrong_scores = [(rel, trans, sc) for (rel, trans, sc) in left_scores \
+            left_wrong_scores = [(rel, trans, sc, non_detach_sc) for (rel, trans, sc, non_detach_sc) in left_scores \
                 if rel != config.get_stack_last_element().relation]
         else:
             left_valid_scores = []
@@ -39,13 +42,14 @@ class Scores:
         if not right_arc_conditions:
             return [], []
         right_cost = config.calculate_right_cost()
-        right_scores = [ (rel, RIGHT_ARC, self.scrs[3 + j * 2] + self.uscrs[3]) \
+        right_scores = [ (rel, RIGHT_ARC, self.scrs[3 + j * 2] + self.uscrs[3],
+                          self.non_detach_scrs[3 + j * 2] + self.non_detach_uscrs[3]) \
                     for j, rel in enumerate(irels) ]
 
         if right_cost == 0:
-            right_valid_scores = [(rel, trans, sc) for (rel, trans, sc) in right_scores \
+            right_valid_scores = [(rel, trans, sc, non_detach_sc) for (rel, trans, sc, non_detach_sc) in right_scores \
                 if rel == config.get_stack_last_element().relation]
-            right_wrong_scores = [(rel, trans, sc) for (rel, trans, sc) in right_scores \
+            right_wrong_scores = [(rel, trans, sc, non_detach_sc) for (rel, trans, sc, non_detach_sc) in right_scores \
                 if rel != config.get_stack_last_element().relation]
         else:
             right_valid_scores = []
@@ -59,7 +63,7 @@ class Scores:
         if not shift_conditions:
              return [], [], shift_case
 
-        shift_scores = [ (None, SHIFT, self.scrs[0] + self.uscrs[0]) ]
+        shift_scores = [ (None, SHIFT, self.scrs[0] + self.uscrs[0], self.non_detach_scrs[0] + self.non_detach_uscrs[0]) ]
 
         if shift_cost == 0:
             shift_valid_scores = shift_scores
@@ -76,7 +80,7 @@ class Scores:
         if not swap_conditions:
             return [], [], swap_cost
 
-        swap_scores = [(None, SWAP, self.scrs[1] + self.uscrs[1])]
+        swap_scores = [(None, SWAP, self.scrs[1] + self.uscrs[1], self.non_detach_scrs[1] + self.non_detach_uscrs[1])]
 
         if swap_cost == 0:
             swap_valid_scores = swap_scores
@@ -94,7 +98,7 @@ class Scores:
         swap_valid, swap_wrong, swap_cost = self._calculate_swap_scores(config)
 
         valid = chain(left_valid, right_valid, shift_valid, swap_valid)
-        wrong = chain(left_wrong, right_wrong, shift_wrong, swap_wrong, [(None, 4, -float('inf'))])
+        wrong = chain(left_wrong, right_wrong, shift_wrong, swap_wrong, [(None, 4, -float('inf'), -float('inf'))]) # TODO: -float('inf') isn`t in computational graph
         # (None, 4, -float('inf')) is used to ensure that at least one element will be.
 
         return valid, wrong, shift_case, swap_cost
@@ -122,6 +126,11 @@ class Scores:
         best = self.choose_best(best_valid, best_wrong, swap_cost, dynamic_oracle)
         error_info.error_append(best, best_valid, best_wrong, config)
         return best, shift_case
+
+class TestScores:
+    def __init__(self, scrs, uscrs):
+        self.scrs = scrs
+        self.uscrs = uscrs
 
     def test_evaluate(self, config, irels):
         """
@@ -175,9 +184,9 @@ class ErrorInfo:
                     self.train_info["eerrors"] += 1
         
         if bestValid[2] < bestWrong[2] + 1.0:
-            loss = bestWrong[2] - bestValid[2]
             self.train_info["mloss"] += 1.0 + bestWrong[2] - bestValid[2]
             self.train_info["eloss"] += 1.0 + bestWrong[2] - bestValid[2]
+            loss = bestWrong[3] - bestValid[3] # values in computational graph
             self.train_info["errs"].append(loss)
 
         #??? when did this happen and why?
@@ -235,12 +244,12 @@ class Oracle:
             leave=False,
         )
         for batch in graph_loader:
-            cur_all_scrs = self.net.evaluate(batch)
+            cur_all_scrs, _ = self.net.evaluate(batch)
             all_scrs_list += cur_all_scrs
         for i, all_scrs in enumerate(all_scrs_list):
             config, _, max_swap, _, iSwap = config_to_predict_list[i]
             scrs, uscrs = self.net.get_scrs_uscrs(all_scrs)
-            scores_info = Scores(scrs, uscrs)
+            scores_info = TestScores(scrs, uscrs)
             scores = scores_info.test_evaluate(config, self.irels)
             best = max(chain(*(scores if iSwap < max_swap else scores[:3] )), key = itemgetter(2) )
             best_transition_list.append(best)
@@ -248,11 +257,13 @@ class Oracle:
 
     def create_train_transition_batch(self, batch, batch_config_list, dynamic_oracle):
         best_transition_list = []
-        cur_all_scrs = self.net.evaluate(batch)
+        non_detach_cur_all_scrs, cur_all_scrs = self.net.evaluate(batch)
         for i, all_scrs in enumerate(cur_all_scrs):
             config = batch_config_list[i]
             scrs, uscrs = self.net.get_scrs_uscrs(all_scrs)
-            scores_info = Scores(scrs, uscrs)
+            non_detach_all_scrs = non_detach_cur_all_scrs[i]
+            non_detach_scrs, non_detach_uscrs = self.net.get_scrs_uscrs(non_detach_all_scrs)
+            scores_info = TrainScores(scrs, uscrs, non_detach_scrs, non_detach_uscrs)
             best, shift_case = \
                 scores_info.create_best_transaction(config, dynamic_oracle,
                                                     self.error_info, self.irels)

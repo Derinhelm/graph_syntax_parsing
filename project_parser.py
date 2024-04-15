@@ -51,6 +51,7 @@ class Parser:
         return osentence
     
     def Predict(self, data):
+        self.oracle.net.gnn.eval()
         reached_max_swap = 0
         config_to_predict_list = []
         isentence_config_dict = {} # iSentence -> Configuration
@@ -94,6 +95,7 @@ class Parser:
         return
 
     def Train(self, trainData):
+        self.oracle.net.gnn.train()
         random.shuffle(trainData)
 
         # in certain cases the data will already have been shuffled after being read from file or while creating dev data
