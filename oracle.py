@@ -32,7 +32,7 @@ class Oracle:
             cur_all_scrs, _ = self.net.evaluate(batch)
             all_scrs_list += cur_all_scrs
         for i, all_scrs in enumerate(all_scrs_list):
-            config, _, max_swap, _, iSwap = config_list[i]
+            config, _, max_swap, _, iSwap = config_param_list[i]
             scrs, uscrs = self.net.get_scrs_uscrs(all_scrs)
             scores_info = TestScores(scrs, uscrs)
             scores = scores_info.test_evaluate(config, self.irels)
