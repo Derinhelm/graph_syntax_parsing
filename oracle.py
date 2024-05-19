@@ -50,7 +50,7 @@ class Oracle:
     def create_train_transition_batch(self, batch, batch_config_list, dynamic_oracle):
         best_transition_list = []
         net_res = self.net.evaluate(batch)
-        for i, net_res_i in enumerate(zip(net_res)):
+        for i, net_res_i in enumerate(zip(*net_res)):
             config = batch_config_list[i]
             scores_info = self.create_score_structure(net_res_i)
             best, shift_case = scores_info.create_best_transition(
