@@ -12,7 +12,7 @@ class ErrorInfo:
         t_info["mloss"], t_info["eloss"], t_info["eerrors"], t_info["lerrors"], t_info["etotal"] \
             = 0.0, 0.0, 0, 0, 0
         t_info["errs"] = []
-        t_info["iSentence"] = -1
+        t_info["sentence_ind"] = -1
         t_info["start"] = time.time()
         return t_info
 
@@ -38,7 +38,7 @@ class ErrorInfo:
 
     def train_logging(self):
         loss_message = (
-            f'Processing sentence number: {self.train_info["iSentence"]}'
+            f'Processing sentence number: {self.train_info["sentence_ind"]}'
             f' Loss: {self.train_info["eloss"] / self.train_info["etotal"]:.3f}'
             f' Errors: {self.train_info["eerrors"] / self.train_info["etotal"]:.3f}'
             f' Labeled Errors: {self.train_info["lerrors"] / self.train_info["etotal"]:.3f}'
@@ -53,8 +53,8 @@ class ErrorInfo:
     def get_mloss(self):
         return self.train_info['mloss']
 
-    def change_sentence_number(self, iSentence):
-        self.train_info["iSentence"] = iSentence
+    def change_sentence_number(self, sentence_ind):
+        self.train_info["sentence_ind"] = sentence_ind
 
     def set_errs(self):
         self.train_info["errs"] = []

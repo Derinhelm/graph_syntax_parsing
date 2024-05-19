@@ -23,7 +23,6 @@ class GNNBlock(torch.nn.Module):
 
 class GNNNet:
     def __init__(self, options, out_irels_dims, device):
-        self.elems_in_batch = options["elems_in_batch"]
         self.hidden_dims = options["hidden_dims"]
         self.out_irels_dims = out_irels_dims
 

@@ -10,16 +10,17 @@ from scores import TrainScores, TestScores
 class Oracle:
     def __init__(self, options, irels, device):
         self.net = GNNNet(options, len(irels), device)
+        self.elems_in_batch = options["elems_in_batch"]
         self.irels = irels
         self.error_info = ErrorInfo()
 
-    def create_test_transition(self, config_to_predict_list):
+    def create_test_transition(self, config_param_list):
         best_transition_list = []
-        config_list = [config for config, _, _, _, _ in config_to_predict_list]
+        config_list = [config for config, _, _, _, _ in config_param_list]
         all_scrs_list = []
         graph_info_list = [config.graph.get_graph() for config in config_list]
         graph_loader = DataLoader(
-            graph_info_list, batch_size=self.net.elems_in_batch, shuffle=False)
+            graph_info_list, batch_size=self.elems_in_batch, shuffle=False)
         pbar = tqdm.tqdm(
             graph_loader,
             desc="Batch processing",
@@ -31,7 +32,7 @@ class Oracle:
             cur_all_scrs, _ = self.net.evaluate(batch)
             all_scrs_list += cur_all_scrs
         for i, all_scrs in enumerate(all_scrs_list):
-            config, _, max_swap, _, iSwap = config_to_predict_list[i]
+            config, _, max_swap, _, iSwap = config_list[i]
             scrs, uscrs = self.net.get_scrs_uscrs(all_scrs)
             scores_info = TestScores(scrs, uscrs)
             scores = scores_info.test_evaluate(config, self.irels)
@@ -75,5 +76,5 @@ class Oracle:
     def get_mloss(self):
         return self.error_info.get_mloss()
 
-    def change_sentence_number(self, iSentence):
-        self.error_info.change_sentence_number(iSentence)
+    def change_sentence_number(self, sentence_ind):
+        self.error_info.change_sentence_number(sentence_ind)
