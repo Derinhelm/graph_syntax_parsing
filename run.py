@@ -92,4 +92,4 @@ def run(traindata, valdata, testdata, embeds, hidden_dims=100, learning_rate=0.0
     total_time = time.time() - ts
     info_logger.info(f"Time of all program: {total_time:.2f}")
     print(f"Total time of the program: {total_time:.2f}")
-    print("metric_dict", save_metric.metric_dict)
+    return save_metric.metric_dict
