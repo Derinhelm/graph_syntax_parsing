@@ -56,10 +56,6 @@ class ErrorInfo:
     def change_sentence_number(self, iSentence):
         self.train_info["iSentence"] = iSentence
 
-    def processing_check(self, is_final):
-        # len(self.train_info["errs"]) > 50 is used because of footnote 8 in Eli's original paper
-        return (is_final and len(self.train_info["errs"]) > 0) or (len(self.train_info["errs"]) > 50)
-
     def set_errs(self):
         self.train_info["errs"] = []
     

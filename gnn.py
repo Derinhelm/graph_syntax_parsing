@@ -50,7 +50,7 @@ class GNNNet:
         self.gnn = GNNBlock(hidden_channels=self.hidden_dims, \
                             out_channels=self.unlabeled_res_size + \
                                          self.labeled_res_size)
-        
+
         gnn_checkpoint = torch.load(gnn_path)
         self.gnn.load_state_dict(gnn_checkpoint['model_state_dict'], strict=False)
         self.gnn = to_hetero(self.gnn, self.metadata, aggr='sum')
@@ -83,4 +83,3 @@ class GNNNet:
             eerrs = torch.sum(torch.stack(errs))
             eerrs.backward()
             self.optimizer.step()
-

@@ -17,9 +17,9 @@ class Oracle:
         best_transition_list = []
         config_list = [config for config, _, _, _, _ in config_to_predict_list]
         all_scrs_list = []
-        #print("config_list len:", len(config_list))
         graph_info_list = [config.graph.get_graph() for config in config_list]
-        graph_loader = DataLoader(graph_info_list, batch_size=self.net.elems_in_batch, shuffle=False)
+        graph_loader = DataLoader(
+            graph_info_list, batch_size=self.net.elems_in_batch, shuffle=False)
         pbar = tqdm.tqdm(
             graph_loader,
             desc="Batch processing",
@@ -39,27 +39,29 @@ class Oracle:
             best_transition_list.append(best)
         return best_transition_list
 
+    def create_score_structure(self, net_res_i):
+        non_detach_all_scrs, all_scrs = net_res_i
+        scrs, uscrs = self.net.get_scrs_uscrs(all_scrs)
+        non_detach_scrs, non_detach_uscrs = self.net.get_scrs_uscrs(non_detach_all_scrs)
+        scores_info = TrainScores(scrs, uscrs, non_detach_scrs, non_detach_uscrs)
+        return scores_info
+
     def create_train_transition_batch(self, batch, batch_config_list, dynamic_oracle):
         best_transition_list = []
-        non_detach_cur_all_scrs, cur_all_scrs = self.net.evaluate(batch)
-        for i, all_scrs in enumerate(cur_all_scrs):
+        net_res = self.net.evaluate(batch)
+        for i, net_res_i in enumerate(zip(net_res)):
             config = batch_config_list[i]
-            scrs, uscrs = self.net.get_scrs_uscrs(all_scrs)
-            non_detach_all_scrs = non_detach_cur_all_scrs[i]
-            non_detach_scrs, non_detach_uscrs = self.net.get_scrs_uscrs(non_detach_all_scrs)
-            scores_info = TrainScores(scrs, uscrs, non_detach_scrs, non_detach_uscrs)
-            best, shift_case = \
-                scores_info.create_best_transaction(config, dynamic_oracle,
-                                                    self.error_info, self.irels)
+            scores_info = self.create_score_structure(net_res_i)
+            best, shift_case = scores_info.create_best_transition(
+                config, dynamic_oracle, self.error_info, self.irels)
             best_transition_list.append((best, shift_case))
         return best_transition_list
 
 
     def error_processing(self, is_final):
-        #if self.error_info.processing_check(is_final):
-            errs = self.error_info.get_errs()
-            self.net.error_processing(errs)
-            self.error_info.set_errs()
+        errs = self.error_info.get_errs()
+        self.net.error_processing(errs)
+        self.error_info.set_errs()
 
     def Load(self, epoch):
         self.net.Load(epoch)
