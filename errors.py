@@ -2,6 +2,7 @@ from logging import getLogger
 import time
 
 from constants import LEFT_ARC, RIGHT_ARC
+from metrics_logging import save_metric
 
 class ErrorInfo:
     def __init__(self):
@@ -31,6 +32,7 @@ class ErrorInfo:
             self.train_info["eloss"] += 1.0 + bestWrong[2] - bestValid[2]
             loss = bestWrong[3] - bestValid[3] # values in computational graph
             self.train_info["errs"].append(loss)
+            save_metric("loss", bestWrong[2] - bestValid[2])
 
         #??? when did this happen and why?
         if best[1] == 0 or best[1] == 2:

@@ -1,6 +1,7 @@
 from logging import getLogger
 import time
 
+from metrics_logging import save_metric
 from project_parser import Parser
 from utils import ConllEntry, get_irels
 
@@ -71,6 +72,8 @@ def run(traindata, valdata, testdata, embeds, hidden_dims=100, learning_rate=0.0
 
         if mean_dev_score > dev_best[1]:
             dev_best = [epoch,mean_dev_score] # update best dev score
+        
+        save_metric.epoch += 1
 
     info_logger.info(f"Loading best model from epoche{dev_best[0]:d}")
     # Loading best_models to parser.labeled_GNN and parser.unlabeled_GNN
@@ -89,3 +92,4 @@ def run(traindata, valdata, testdata, embeds, hidden_dims=100, learning_rate=0.0
     total_time = time.time() - ts
     info_logger.info(f"Time of all program: {total_time:.2f}")
     print(f"Total time of the program: {total_time:.2f}")
+    print("metric_dict", save_metric.metric_dict)
