@@ -27,6 +27,9 @@ class Configuration:
 
         self.graph = ConfigGraph(self.sentence, self.word_embeds, device)
 
+    def get_config_embed(self, mode="graph"):
+        return self.graph.get_graph()
+
     def __str__(self):
         s = "Config.\nsentence: " + ", ".join(map(str, self.sentence)) + "\n"
         s += "stack: " + str(self.stack) + "\n"

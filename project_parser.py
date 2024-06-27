@@ -125,13 +125,13 @@ class Parser:
         iter_num = 0
         while len(config_list) != 0:
             print(iter_num, len(config_list))
-            graph_list = [config.graph.get_graph()
+            config_embed_list = [config.get_config_embed()
                                for config in config_list]
-            graph_loader = DataLoader(
-                graph_list, batch_size=self.oracle.elems_in_batch,
+            config_embed_loader = DataLoader(
+                config_embed_list, batch_size=self.oracle.elems_in_batch,
                 shuffle=False)
             config_i, new_config_list = 0, []
-            for batch in graph_loader:
+            for batch in config_embed_loader:
                 batch_config_list = \
                     config_list[config_i:config_i + len(batch)]
                 config_i += len(batch)

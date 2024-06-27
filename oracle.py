@@ -18,17 +18,17 @@ class Oracle:
         best_transition_list = []
         config_list = [config for config, _, _, _, _ in config_param_list]
         all_scrs_list = []
-        graph_info_list = [config.graph.get_graph() for config in config_list]
-        graph_loader = DataLoader(
-            graph_info_list, batch_size=self.elems_in_batch, shuffle=False)
+        config_embed_list = [config.get_config_embed() for config in config_list]
+        config_embed_loader = DataLoader(
+            config_embed_list, batch_size=self.elems_in_batch, shuffle=False)
         pbar = tqdm.tqdm(
-            graph_loader,
+            config_embed_loader,
             desc="Batch processing",
             unit="batch",
             mininterval=1.0,
             leave=False,
         )
-        for batch in graph_loader:
+        for batch in config_embed_loader:
             cur_all_scrs, _ = self.net.evaluate(batch)
             all_scrs_list += cur_all_scrs
         for i, all_scrs in enumerate(all_scrs_list):
