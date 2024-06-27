@@ -27,8 +27,13 @@ class Configuration:
 
         self.graph = ConfigGraph(self.sentence, self.word_embeds, device)
 
-    def get_config_embed(self, mode="graph"):
-        return self.graph.get_graph()
+    def get_config_embed(self, device, mode="graph"):
+        if mode == "graph":
+            return self.graph.get_graph()
+        else:
+            buffer_id = self.buffer.roots[0].id
+            e = self.word_embeds[buffer_id].to(device)
+            return e
 
     def __str__(self):
         s = "Config.\nsentence: " + ", ".join(map(str, self.sentence)) + "\n"

@@ -4,21 +4,26 @@ from torch_geometric.loader import DataLoader
 import tqdm
 
 from errors import ErrorInfo
-from gnn import GNNNet
 from scores import TrainScores, TestScores
 
 class Oracle:
-    def __init__(self, options, irels, device):
-        self.net = GNNNet(options, len(irels), device)
+    def __init__(self, options, irels, device, mode):
+        self.mode = mode
+        if mode == "graph":
+            from gnn import GNNNet
+            self.net = GNNNet(options, len(irels), device)
+        else:
+            from mlp import MLPNet
+            self.net = MLPNet(options, len(irels), device)
         self.elems_in_batch = options["elems_in_batch"]
         self.irels = irels
         self.error_info = ErrorInfo()
 
-    def create_test_transition(self, config_param_list):
+    def create_test_transition(self, config_param_list, device):
         best_transition_list = []
         config_list = [config for config, _, _, _, _ in config_param_list]
         all_scrs_list = []
-        config_embed_list = [config.get_config_embed() for config in config_list]
+        config_embed_list = [config.get_config_embed(device, self.mode) for config in config_list]
         config_embed_loader = DataLoader(
             config_embed_list, batch_size=self.elems_in_batch, shuffle=False)
         pbar = tqdm.tqdm(

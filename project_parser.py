@@ -12,11 +12,12 @@ from oracle import Oracle
 from utils import ConllEntry
 
 class Parser:
-    def __init__(self, options, irels, embeds):
+    def __init__(self, options, irels, embeds, mode):
         self.dynamic_oracle = options["dynamic_oracle"]
+        self.mode = mode
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu" )
         print("device:", self.device)
-        self.oracle = Oracle(options, irels, self.device)
+        self.oracle = Oracle(options, irels, self.device, mode)
         self.embeds = embeds
         self.info_logger = getLogger('info_logger')
         self.time_logger = getLogger('time_logger')
@@ -51,7 +52,7 @@ class Parser:
         return osentence
 
     def Predict(self, data):
-        self.oracle.net.gnn.eval()
+        self.oracle.net.net.eval() # TODO: incapsulation
         reached_max_swap = 0
         config_list = []
         isentence_config_dict = {} # sentence_ind -> Configuration
@@ -69,7 +70,7 @@ class Parser:
         while len(config_list) != 0:
             new_config_list = []
             best_config_list = \
-                self.oracle.create_test_transition(config_list)
+                self.oracle.create_test_transition(config_list, self.device)
 
             for i, config_to_predict in enumerate(config_list):
                 config, sentence_ind, max_swap, reached_swap_for_i_sentence, iSwap = config_to_predict
@@ -110,7 +111,7 @@ class Parser:
         return not_finished_configs
 
     def Train(self, trainData):
-        self.oracle.net.gnn.train()
+        self.oracle.net.net.train()
         random.shuffle(trainData)
 
         # in certain cases the data will already have been shuffled
@@ -125,7 +126,7 @@ class Parser:
         iter_num = 0
         while len(config_list) != 0:
             print(iter_num, len(config_list))
-            config_embed_list = [config.get_config_embed()
+            config_embed_list = [config.get_config_embed(self.device, self.oracle.mode)
                                for config in config_list]
             config_embed_loader = DataLoader(
                 config_embed_list, batch_size=self.oracle.elems_in_batch,

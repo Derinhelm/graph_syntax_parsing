@@ -27,7 +27,7 @@ p = None
 
 def run(traindata, valdata, testdata, embeds, hidden_dims=100, learning_rate=0.001,\
         dynamic_oracle=True, epochs=10, first_epoch=1, info_logging=True, \
-        time_logging=True, transition_logging=True, elems_in_batch=1):
+        time_logging=True, transition_logging=True, elems_in_batch=1, mode="mlp"):
     ts = time.time()
     options = {}
     options["hidden_dims"] = hidden_dims # MLP hidden layer dimensions
@@ -50,7 +50,7 @@ def run(traindata, valdata, testdata, embeds, hidden_dims=100, learning_rate=0.0
         transition_logger.removeHandler(transition_logger.handlers[0])
     irels = get_irels(traindata)
     info_logger.debug('Initializing the model')
-    parser = Parser(options, irels, embeds)
+    parser = Parser(options, irels, embeds, mode)
     global p
     p = parser
 
