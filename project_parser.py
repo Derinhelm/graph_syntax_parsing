@@ -74,8 +74,26 @@ class Parser:
         config_list, isentence_config_dict = self.create_test_config_list(data)
         while len(config_list) != 0:
             new_config_list = []
-            best_config_list = \
-                self.oracle.create_test_transition(config_list, self.device)
+            best_config_list = []
+            config_embed_list = [config.get_config_embed(self.device, self.mode)
+                                 for config, _, _, _, _ in config_list]
+            config_embed_loader = DataLoader(
+                config_embed_list, batch_size=self.oracle.elems_in_batch, shuffle=False)
+            pbar = tqdm.tqdm(
+                config_embed_loader,
+                desc="Batch processing",
+                unit="batch",
+                mininterval=1.0,
+                leave=False,
+            )
+            config_i = 0
+            for batch in config_embed_loader:
+                batch_config_param_list = \
+                        config_list[config_i:config_i + len(batch)]
+                config_i += len(batch)
+                best_transition_batch_list = \
+                    self.oracle.create_test_transition_batch(batch, batch_config_param_list)
+                best_config_list += best_transition_batch_list
 
             for i, config_to_predict in enumerate(config_list):
                 config, sentence_ind, max_swap, reached_swap_for_i_sentence, iSwap = config_to_predict

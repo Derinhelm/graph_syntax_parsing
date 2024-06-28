@@ -33,26 +33,7 @@ class Oracle:
         return batch_best_transition_list
 
     def create_test_transition(self, config_param_list, device):
-        best_transition_list = []
-        config_list = [config for config, _, _, _, _ in config_param_list]
-        config_embed_list = [config.get_config_embed(device, self.mode) for config in config_list]
-        config_embed_loader = DataLoader(
-            config_embed_list, batch_size=self.elems_in_batch, shuffle=False)
-        pbar = tqdm.tqdm(
-            config_embed_loader,
-            desc="Batch processing",
-            unit="batch",
-            mininterval=1.0,
-            leave=False,
-        )
-        config_i = 0
-        for batch in config_embed_loader:
-            batch_config_param_list = \
-                    config_param_list[config_i:config_i + len(batch)]
-            config_i += len(batch)
-            best_transition_batch_list = \
-                self.create_test_transition_batch(batch, batch_config_param_list)
-            best_transition_list += best_transition_batch_list
+
 
         return best_transition_list
 
