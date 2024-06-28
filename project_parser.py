@@ -66,41 +66,41 @@ class Parser:
                                           reached_swap_for_i_sentence, iSwap))
         return config_list, isentence_config_dict
 
-    #def create_test_next_configs_batch(self, batch, batch_config_list):
+    def create_test_next_configs_batch(self, reached_max_swap, batch, batch_config_list):
+        not_finished_configs = []
+        best_transition_batch_list = \
+            self.oracle.create_test_transition_batch(batch, batch_config_list)
+        for i, best in enumerate(best_transition_batch_list):
+            config, sentence_ind, max_swap, reached_swap_for_i_sentence, iSwap = \
+                batch_config_list[i]
+            reached_max_swap, reached_swap_for_i_sentence, iSwap = \
+                self.test_transition_processing(config, best, max_swap, sentence_ind,
+                    reached_max_swap, reached_swap_for_i_sentence, iSwap)
+            if not config.is_end():
+                not_finished_configs.append((config, sentence_ind, max_swap,
+                    reached_swap_for_i_sentence, iSwap))
+        return reached_max_swap, not_finished_configs
 
     def Predict(self, data):
         self.oracle.net.net.eval() # TODO: incapsulation
         reached_max_swap = 0
         config_list, isentence_config_dict = self.create_test_config_list(data)
         while len(config_list) != 0:
-            new_config_list = []
             config_embed_list = [config.get_config_embed(self.device, self.mode)
                                  for config, _, _, _, _ in config_list]
             config_embed_loader = DataLoader(
                 config_embed_list, batch_size=self.oracle.elems_in_batch, shuffle=False)
-            pbar = tqdm.tqdm(
-                config_embed_loader,
-                desc="Batch processing",
-                unit="batch",
-                mininterval=1.0,
-                leave=False,
-            )
+
+            new_config_list = []
             config_i = 0
             for batch in config_embed_loader:
-                batch_config_param_list = \
+                batch_config_list = \
                         config_list[config_i:config_i + len(batch)]
                 config_i += len(batch)
-                best_transition_batch_list = \
-                    self.oracle.create_test_transition_batch(batch, batch_config_param_list)
-                for i, best in enumerate(best_transition_batch_list):
-                    config, sentence_ind, max_swap, reached_swap_for_i_sentence, iSwap = \
-                        batch_config_param_list[i]
-                    reached_max_swap, reached_swap_for_i_sentence, iSwap = \
-                        self.test_transition_processing(config, best, max_swap, sentence_ind,
-                            reached_max_swap, reached_swap_for_i_sentence, iSwap)
-                    if not config.is_end():
-                        new_config_list.append((config, sentence_ind, max_swap,
-                            reached_swap_for_i_sentence, iSwap))
+                reached_max_swap, new_batch_config_list = \
+                    self.create_test_next_configs_batch(reached_max_swap, batch, batch_config_list)
+                new_config_list += new_batch_config_list
+
             config_list = new_config_list
 
         for sentence_ind, osentence in enumerate(data,1):
