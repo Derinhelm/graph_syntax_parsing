@@ -51,9 +51,7 @@ class Parser:
             tok_o.pred_parent_id = tok.pred_parent_id
         return osentence
 
-    def Predict(self, data):
-        self.oracle.net.net.eval() # TODO: incapsulation
-        reached_max_swap = 0
+    def create_test_config_list(self, data):
         config_list = []
         isentence_config_dict = {} # sentence_ind -> Configuration
         for sentence_ind, osentence in enumerate(data,1):
@@ -66,7 +64,14 @@ class Parser:
             iSwap = 0
             config_list.append((config, sentence_ind, max_swap, \
                                           reached_swap_for_i_sentence, iSwap))
+        return config_list, isentence_config_dict
 
+    #def create_test_next_configs_batch(self, batch, batch_config_list):
+
+    def Predict(self, data):
+        self.oracle.net.net.eval() # TODO: incapsulation
+        reached_max_swap = 0
+        config_list, isentence_config_dict = self.create_test_config_list(data)
         while len(config_list) != 0:
             new_config_list = []
             best_config_list = \
@@ -96,7 +101,7 @@ class Parser:
         config.apply_transition(best)
         return
 
-    def create_next_configs_batch(self, batch, batch_config_list):
+    def create_train_next_configs_batch(self, batch, batch_config_list):
         not_finished_configs = []
         best_transition_batch_list = \
             self.oracle.create_train_transition_batch(batch,
@@ -107,7 +112,6 @@ class Parser:
             self.train_transition_processing(config, best_transition, shift_case)
             if not config.is_end():
                 not_finished_configs.append(config)
-        self.oracle.error_processing(False)
         return not_finished_configs
 
     def Train(self, trainData):
@@ -137,7 +141,8 @@ class Parser:
                     config_list[config_i:config_i + len(batch)]
                 config_i += len(batch)
                 new_config_list += \
-                    self.create_next_configs_batch(batch, batch_config_list)
+                    self.create_train_next_configs_batch(batch, batch_config_list)
+                self.oracle.error_processing(False)
 
             config_list = new_config_list
             iter_num += 1

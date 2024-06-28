@@ -15,14 +15,26 @@ class Oracle:
         else:
             from mlp import MLPNet
             self.net = MLPNet(options, len(irels), device)
+        print(self.net)
         self.elems_in_batch = options["elems_in_batch"]
         self.irels = irels
         self.error_info = ErrorInfo()
 
+    def create_test_transition_batch(self, batch, batch_config_param_list):
+        cur_all_scrs, _ = self.net.evaluate(batch)
+        batch_best_transition_list = []
+        for i, all_scrs in enumerate(cur_all_scrs):
+            config, _, max_swap, _, iSwap = batch_config_param_list[i]
+            scrs, uscrs = self.net.get_scrs_uscrs(all_scrs)
+            scores_info = TestScores(scrs, uscrs)
+            scores = scores_info.test_evaluate(config, self.irels)
+            best = max(chain(*(scores if iSwap < max_swap else scores[:3] )), key = itemgetter(2) )
+            batch_best_transition_list.append(best)
+        return batch_best_transition_list
+
     def create_test_transition(self, config_param_list, device):
         best_transition_list = []
         config_list = [config for config, _, _, _, _ in config_param_list]
-        all_scrs_list = []
         config_embed_list = [config.get_config_embed(device, self.mode) for config in config_list]
         config_embed_loader = DataLoader(
             config_embed_list, batch_size=self.elems_in_batch, shuffle=False)
@@ -33,16 +45,15 @@ class Oracle:
             mininterval=1.0,
             leave=False,
         )
+        config_i = 0
         for batch in config_embed_loader:
-            cur_all_scrs, _ = self.net.evaluate(batch)
-            all_scrs_list += cur_all_scrs
-        for i, all_scrs in enumerate(all_scrs_list):
-            config, _, max_swap, _, iSwap = config_param_list[i]
-            scrs, uscrs = self.net.get_scrs_uscrs(all_scrs)
-            scores_info = TestScores(scrs, uscrs)
-            scores = scores_info.test_evaluate(config, self.irels)
-            best = max(chain(*(scores if iSwap < max_swap else scores[:3] )), key = itemgetter(2) )
-            best_transition_list.append(best)
+            batch_config_param_list = \
+                    config_param_list[config_i:config_i + len(batch)]
+            config_i += len(batch)
+            best_transition_batch_list = \
+                self.create_test_transition_batch(batch, batch_config_param_list)
+            best_transition_list += best_transition_batch_list
+
         return best_transition_list
 
     def create_score_structure(self, net_res_i):
