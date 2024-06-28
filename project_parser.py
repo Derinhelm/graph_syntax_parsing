@@ -74,7 +74,6 @@ class Parser:
         config_list, isentence_config_dict = self.create_test_config_list(data)
         while len(config_list) != 0:
             new_config_list = []
-            best_config_list = []
             config_embed_list = [config.get_config_embed(self.device, self.mode)
                                  for config, _, _, _, _ in config_list]
             config_embed_loader = DataLoader(
@@ -93,17 +92,15 @@ class Parser:
                 config_i += len(batch)
                 best_transition_batch_list = \
                     self.oracle.create_test_transition_batch(batch, batch_config_param_list)
-                best_config_list += best_transition_batch_list
-
-            for i, config_to_predict in enumerate(config_list):
-                config, sentence_ind, max_swap, reached_swap_for_i_sentence, iSwap = config_to_predict
-                best = best_config_list[i]
-                reached_max_swap, reached_swap_for_i_sentence, iSwap = \
+                for i, best in enumerate(best_transition_batch_list):
+                    config, sentence_ind, max_swap, reached_swap_for_i_sentence, iSwap = \
+                        batch_config_param_list[i]
+                    reached_max_swap, reached_swap_for_i_sentence, iSwap = \
                         self.test_transition_processing(config, best, max_swap, sentence_ind,
-                                            reached_max_swap, reached_swap_for_i_sentence, iSwap)
-                if not config.is_end():
-                    new_config_list.append((config, sentence_ind, max_swap, 
-                                                      reached_swap_for_i_sentence, iSwap))
+                            reached_max_swap, reached_swap_for_i_sentence, iSwap)
+                    if not config.is_end():
+                        new_config_list.append((config, sentence_ind, max_swap,
+                            reached_swap_for_i_sentence, iSwap))
             config_list = new_config_list
 
         for sentence_ind, osentence in enumerate(data,1):
