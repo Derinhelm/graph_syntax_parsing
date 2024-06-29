@@ -20,8 +20,8 @@ class Oracle:
         self.irels = irels
         self.error_info = ErrorInfo()
 
-    def create_test_transition_batch(self, batch, batch_config_param_list):
-        cur_all_scrs, _ = self.net.evaluate(batch)
+    def create_test_transition_batch(self, batch_embeds, batch_config_param_list):
+        cur_all_scrs, _ = self.net.evaluate(batch_embeds)
         batch_best_transition_list = []
         for i, all_scrs in enumerate(cur_all_scrs):
             config, _, max_swap, _, iSwap = batch_config_param_list[i]
@@ -31,11 +31,6 @@ class Oracle:
             best = max(chain(*(scores if iSwap < max_swap else scores[:3] )), key = itemgetter(2) )
             batch_best_transition_list.append(best)
         return batch_best_transition_list
-
-    def create_test_transition(self, config_param_list, device):
-
-
-        return best_transition_list
 
     def create_score_structure(self, net_res_i):
         non_detach_all_scrs, all_scrs = net_res_i

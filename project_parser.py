@@ -67,10 +67,10 @@ class Parser:
                                           reached_swap_for_i_sentence, iSwap))
         return config_list, isentence_config_dict
 
-    def create_test_next_configs_batch(self, reached_max_swap, batch, batch_config_list):
+    def create_test_next_configs_batch(self, reached_max_swap, batch_embeds, batch_config_list):
         not_finished_configs = []
         best_transition_batch_list = \
-            self.oracle.create_test_transition_batch(batch, batch_config_list)
+            self.oracle.create_test_transition_batch(batch_embeds, batch_config_list)
         for i, best in enumerate(best_transition_batch_list):
             config, sentence_ind, max_swap, reached_swap_for_i_sentence, iSwap = \
                 batch_config_list[i]
@@ -86,23 +86,15 @@ class Parser:
         self.oracle.net.net.eval() # TODO: incapsulation
         reached_max_swap = 0
         config_list, isentence_config_dict = self.create_test_config_list(data)
-        while len(config_list) != 0:
-            config_embed_list = [config.get_config_embed(self.device, self.mode)
-                                 for config, _, _, _, _ in config_list]
-            config_embed_loader = DataLoader(
-                config_embed_list, batch_size=self.oracle.elems_in_batch, shuffle=False)
-
-            new_config_list = []
-            config_i = 0
-            for batch in config_embed_loader:
-                batch_config_list = \
-                        config_list[config_i:config_i + len(batch)]
-                config_i += len(batch)
-                reached_max_swap, new_batch_config_list = \
-                    self.create_test_next_configs_batch(reached_max_swap, batch, batch_config_list)
-                new_config_list += new_batch_config_list
-
-            config_list = new_config_list
+        batch_creator = BatchCreator(config_list, self.oracle.elems_in_batch)
+        batch_configs = batch_creator.get_new_batch()
+        while batch_configs is not None:
+            batch_embeds = [config.get_config_embed(self.device, self.mode)
+                                 for config, _, _, _, _ in batch_configs]
+            reached_max_swap, new_batch_config_list = \
+                self.create_test_next_configs_batch(reached_max_swap, batch_embeds, batch_configs)
+            batch_creator.add_new_config_list(new_batch_config_list)
+            batch_configs = batch_creator.get_new_batch()
 
         for sentence_ind, osentence in enumerate(data,1):
             config = isentence_config_dict[sentence_ind]
