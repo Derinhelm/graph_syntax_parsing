@@ -13,9 +13,10 @@ from oracle import Oracle
 from utils import ConllEntry
 
 class Parser:
-    def __init__(self, options, irels, embeds, mode):
+    def __init__(self, options, irels, embeds, mode, batch_mode):
         self.dynamic_oracle = options["dynamic_oracle"]
         self.mode = mode
+        self.batch_mode = batch_mode
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu" )
         print("device:", self.device)
         self.oracle = Oracle(options, irels, self.device, mode)
@@ -86,7 +87,8 @@ class Parser:
         self.oracle.net.net.eval() # TODO: incapsulation
         reached_max_swap = 0
         config_list, isentence_config_dict = self.create_test_config_list(data)
-        batch_creator = BatchCreator(config_list, self.oracle.elems_in_batch)
+        batch_creator = BatchCreator(config_list, self.oracle.elems_in_batch,
+                                     self.batch_mode)
         batch_configs = batch_creator.get_new_batch()
         while batch_configs is not None:
             batch_embeds = [config.get_config_embed(self.device, self.mode)
@@ -135,7 +137,8 @@ class Parser:
                                      self.embeds, self.device)
                             for sentence in trainData]
 
-        batch_creator = BatchCreator(config_list, self.oracle.elems_in_batch)
+        batch_creator = BatchCreator(config_list, self.oracle.elems_in_batch,
+                                     self.batch_mode)
         batch_configs = batch_creator.get_new_batch()
         while batch_configs is not None:
             batch_embeds = [config.get_config_embed(self.device, self.oracle.mode)
