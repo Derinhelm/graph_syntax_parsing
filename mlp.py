@@ -60,7 +60,9 @@ class MLPNet:
 
     def evaluate(self, batch_embeds):
         self.optimizer.zero_grad()
-
+        # batch_embeds - [Tensor]
+        if isinstance(batch_embeds, list):
+            batch_embeds = torch.stack(batch_embeds)
         all_scrs_net = self.net(batch_embeds)
         detach_all_scrs = all_scrs_net.clone().detach().cpu()
         return list(all_scrs_net), list(detach_all_scrs)

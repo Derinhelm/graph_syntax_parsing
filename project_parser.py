@@ -6,6 +6,7 @@ import torch
 from torch_geometric.loader import DataLoader
 import tqdm
 
+from batch import BatchCreator
 from configuration import Configuration
 from constants import SWAP
 from oracle import Oracle
@@ -142,25 +143,17 @@ class Parser:
                                      self.embeds, self.device)
                             for sentence in trainData]
 
-        iter_num = 0
-        while len(config_list) != 0:
-            print(iter_num, len(config_list))
-            config_embed_list = [config.get_config_embed(self.device, self.oracle.mode)
-                               for config in config_list]
-            config_embed_loader = DataLoader(
-                config_embed_list, batch_size=self.oracle.elems_in_batch,
-                shuffle=False)
-            config_i, new_config_list = 0, []
-            for batch in config_embed_loader:
-                batch_config_list = \
-                    config_list[config_i:config_i + len(batch)]
-                config_i += len(batch)
-                new_config_list += \
-                    self.create_train_next_configs_batch(batch, batch_config_list)
-                self.oracle.error_processing(False)
+        batch_creator = BatchCreator(config_list, self.oracle.elems_in_batch)
+        batch_configs = batch_creator.get_new_batch()
+        while batch_configs is not None:
+            batch_embeds = [config.get_config_embed(self.device, self.oracle.mode)
+                               for config in batch_configs]
+            new_config_list = \
+                self.create_train_next_configs_batch(batch_embeds, batch_configs)
+            batch_creator.add_new_config_list(new_config_list)
+            self.oracle.error_processing(False)
+            batch_configs = batch_creator.get_new_batch()
 
-            config_list = new_config_list
-            iter_num += 1
         self.oracle.error_processing(True)
         mloss = self.oracle.get_mloss()
 
