@@ -13,7 +13,7 @@ class MLPBlock(nn.Module):
     def __init__(self, hidden_channels, out_channels):
         super().__init__()
         self.layers_stack = nn.Sequential(
-            nn.Linear(312, hidden_channels),
+            nn.Linear(312 * 3, hidden_channels),
             nn.ReLU(),
             nn.Linear(hidden_channels, out_channels),
         )

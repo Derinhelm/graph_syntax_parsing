@@ -4,6 +4,7 @@ import time
 import torch
 
 from copy import deepcopy
+from itertools import chain
 
 from configuration_graph import ConfigGraph
 from constants import LEFT_ARC, RIGHT_ARC, SHIFT, SWAP
@@ -19,9 +20,9 @@ class Configuration:
         self.buffer = ParseForest(self.sentence)
         for root in self.sentence:
             root.relation = root.relation if root.relation in irels else 'runk'
-        embed_size = 312 # for tiny-bert
-        self.word_embeds = torch.empty((len(self.sentence), embed_size))
-        self.word_embeds[0] = torch.zeros(embed_size) # TODO: temporary solution for root element
+        self.embed_size = 312 # for tiny-bert
+        self.word_embeds = torch.empty((len(self.sentence), self.embed_size))
+        self.word_embeds[0] = torch.zeros(self.embed_size) # TODO: temporary solution for root element
         for i in range(len(self.sentence) - 1): # Last element is a technical root element.
             self.word_embeds[i + 1] = embeds[self.sentence[i].lemma] # Word number id starts from 1 in the graph.
 
@@ -31,9 +32,14 @@ class Configuration:
         if mode == "graph":
             return self.graph.get_graph()
         else:
+            top_stack = [self.word_embeds[token.id] for token in self.stack.roots[-2:]]
+            for _ in range(2 - len(top_stack)): # if stack doesn`t consist 2 tokens
+                top_stack.append(torch.zeros(self.embed_size))
             buffer_id = self.buffer.roots[0].id
-            e = self.word_embeds[buffer_id].to(device)
-            return e
+            top_buffer = [self.word_embeds[buffer_id]] # buffer len should be more than 0
+            embed = torch.cat(top_stack + top_buffer)
+            embed = embed.to(device)
+            return embed
 
     def __str__(self):
         s = "Config.\nsentence: " + ", ".join(map(str, self.sentence)) + "\n"
