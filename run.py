@@ -8,13 +8,22 @@ from utils import ConllEntry, get_irels
 def evaluate_uas(sentence_descr):
     #sentence_descr is a list, in which elements 0, 1, 2 are auxiliary
     right_parent_tokens = 0
+    print("sentence")
+    print(sentence_descr[0].__dict__)
+    print(sentence_descr[1])
+    print(sentence_descr[2])
+
     for token in sentence_descr[3:]:
+        print("token:", token)
         if isinstance(token, ConllEntry): 
           # TODO: изучить случаи, когда не ConllEntry - ошибка считывания?
           if token.pred_parent_id == token.parent_id:
               right_parent_tokens += 1
+              print("right_parent_tokens:", right_parent_tokens)
         #print("pred_parent:", token.pred_parent_id, "real_parent:", token.parent_id)
+    print("len(sentence_descr):", len(sentence_descr))
     uas = right_parent_tokens / (len(sentence_descr) - 3)
+    print("uas:", uas)
     return uas
 
 def evaluate_uas_epoche(sentence_list):
