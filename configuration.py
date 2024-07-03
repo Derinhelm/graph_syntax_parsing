@@ -23,7 +23,7 @@ class Configuration:
         self.embed_size = 312 # for tiny-bert
         self.word_embeds = torch.empty((len(self.sentence), self.embed_size))
         if embeds[0] == "context": # context embeds are used
-            sent_words = ['root'] + [w.form for w in self.sentence]
+            sent_words = ['root'] + [w.form for w in self.sentence][:-1]# Last element is a technical root element.
             print("sent_words:", sent_words)
             embed_creator = embeds[1]
             sent_embeds = embed_creator.create_first_bert_embeddings_sent(sent_words)
