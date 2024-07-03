@@ -17,7 +17,8 @@ def create_embeds(all_words):
     embeds = {}
     tokenizer = AutoTokenizer.from_pretrained("cointegrated/rubert-tiny2")
     model = AutoModel.from_pretrained("cointegrated/rubert-tiny2")
-    model.cuda()  # uncomment it if you have a GPU
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu" )
+    model.to(device)
 
     info_logger.debug(f'Creating {len(all_words)} embeddings')
     ts = time.time()
@@ -42,7 +43,8 @@ class TinyBertEmbeddingCreator:
     def __init__(self):
         self.tokenizer = AutoTokenizer.from_pretrained("cointegrated/rubert-tiny2")
         self.model = AutoModel.from_pretrained("cointegrated/rubert-tiny2")
-        self.model.cuda()
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu" )
+        self.model.to(device)
 
     def create_first_bert_embeddings_sent(self, sent):
         inputs_ids_words = []
