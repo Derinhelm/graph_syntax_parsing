@@ -22,10 +22,21 @@ class Configuration:
             root.relation = root.relation if root.relation in irels else 'runk'
         self.embed_size = 312 # for tiny-bert
         self.word_embeds = torch.empty((len(self.sentence), self.embed_size))
-        self.word_embeds[0] = torch.zeros(self.embed_size) # TODO: temporary solution for root element
-        for i in range(len(self.sentence) - 1): # Last element is a technical root element.
-            self.word_embeds[i + 1] = embeds[self.sentence[i].lemma] # Word number id starts from 1 in the graph.
-
+        if embeds[0] == "context": # context embeds are used
+            sent_words = ['root'] + [w.form for w in self.sentence]
+            print("sent_words:", sent_words)
+            embed_creator = embeds[1]
+            sent_embeds = embed_creator.create_first_bert_embeddings_sent(sent_words)
+            for i in range(len(sent_words)):
+                self.word_embeds[i] = sent_embeds[i]
+        elif embeds[0] == "independent": # embeds from dict are used (embeds are generated for lexeme without context)
+            self.word_embeds[0] = torch.zeros(self.embed_size) # TODO: temporary solution for root element
+            for i in range(len(self.sentence) - 1): # Last element is a technical root element.
+                self.word_embeds[i + 1] = embeds[self.sentence[i].lemma] # Word number id starts from 1 in the graph.
+        else:
+            print("Wrong embedding type:", embeds[0])
+            import sys
+            sys.exit(-1)
         self.graph = ConfigGraph(self.sentence, self.word_embeds, device)
 
     def get_config_embed(self, device, mode="graph"):
