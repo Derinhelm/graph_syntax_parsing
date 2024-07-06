@@ -79,7 +79,7 @@ class ArcHybridLSTM:
 
 
         #scores, unlabeled scores
-        scrs, uscrs = routput.value(), output.value()
+        scrs, uscrs = routput.detach().clone(), output.detach().clone()
 
         #transition conditions
         left_arc_conditions = len(stack) > 0
@@ -453,8 +453,7 @@ class ArcHybridLSTM:
 
             #footnote 8 in Eli's original paper
             if len(errs) > 50: # or True:
-                eerrs = torch.sum(errs) 
-                scalar_loss = eerrs.scalar_value() #forward
+                eerrs = torch.sum(torch.stack(errs))
                 eerrs.backward()
                 #self.trainer.update()
                 self.labeled_optimizer.step() # TODO Какой из оптимизаторов ???
@@ -465,8 +464,7 @@ class ArcHybridLSTM:
                 #self.feature_extractor.Init(options)
 
         if len(errs) > 0:
-            eerrs = torch.sum(errs) 
-            eerrs.scalar_value()
+            eerrs = torch.sum(torch.stack(errs))
             eerrs.backward()
             #self.trainer.update()
             self.labeled_optimizer.step() # TODO Какой из оптимизаторов ???
@@ -476,6 +474,6 @@ class ArcHybridLSTM:
             lerrs = []
 
 
-        self.trainer.update()
+        #self.trainer.update()
         print(f"Loss: {mloss/iSentence}")
         print(f"Total Training Time: {time.time()-beg:.2g}s")
