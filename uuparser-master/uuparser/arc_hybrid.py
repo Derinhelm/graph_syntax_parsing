@@ -150,13 +150,14 @@ class ArcHybridLSTM:
             #attach
             child.pred_parent_id = parent.id
             child.pred_relation = best[0]
+            # TODO
             #update head representation
-            if self.rlMostFlag:
+            #if self.rlMostFlag:
                 #deepest leftmost/rightmost descendant
-                parent.lstms[best[1] + hoffset] = child.lstms[best[1] + hoffset]
-            if self.rlFlag:
+            #    parent.lstms[best[1] + hoffset] = child.lstms[best[1] + hoffset]
+            #if self.rlFlag:
                 #leftmost/rightmost child
-                parent.lstms[best[1] + hoffset] = child.vec
+            #    parent.lstms[best[1] + hoffset] = child.vec
 
     def calculate_cost(self,scores,s0,s1,b,beta,stack_ids):
         if len(scores[LEFT_ARC]) == 0:
@@ -305,10 +306,10 @@ class ArcHybridLSTM:
 
             hoffset = 1 if self.headFlag else 0
 
-            for root in conll_sentence:
-                root.lstms = [root.vec] if self.headFlag else []
-                root.lstms += [root.vec for _ in range(self.nnvecs - hoffset)]
-                root.relation = root.relation if root.relation in self.irels else 'runk'
+            #for root in conll_sentence:
+            #    root.lstms = [root.vec] if self.headFlag else []
+            #    root.lstms += [root.vec for _ in range(self.nnvecs - hoffset)]
+            #    root.relation = root.relation if root.relation in self.irels else 'runk'
 
 
             while not (len(buf) == 1 and len(stack) == 0):
@@ -386,10 +387,10 @@ class ArcHybridLSTM:
             buf = ParseForest(conll_sentence)
             hoffset = 1 if self.headFlag else 0
 
-            for root in conll_sentence:
-                root.lstms = [root.vec] if self.headFlag else []
-                root.lstms += [root.vec for _ in range(self.nnvecs - hoffset)]
-                root.relation = root.relation if root.relation in self.irels else 'runk'
+            #for root in conll_sentence:
+                #root.lstms = [root.vec] if self.headFlag else []
+                #root.lstms += [root.vec for _ in range(self.nnvecs - hoffset)]
+                #root.relation = root.relation if root.relation in self.irels else 'runk'
 
             while not (len(buf) == 1 and len(stack) == 0):
                 scores = self.__evaluate(stack, buf, True)
