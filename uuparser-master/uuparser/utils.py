@@ -9,8 +9,6 @@ import pathlib
 import subprocess
 import sys
 
-from loguru import logger
-
 import tqdm
 
 UTILS_PATH = pathlib.Path(__file__).parent/"utils"
@@ -197,7 +195,7 @@ def get_vocab(treebanks,datasplit,char_map={}):
 
 
 def load_iso_dict(json_file=UTILS_PATH/'ud_iso.json'):
-    logger.debug(f"Loading ISO dict from {json_file}")
+    print(f"Loading ISO dict from {json_file}")
     global iso_dict
     ud_iso_file = open(json_file,encoding='utf-8')
     json_str = ud_iso_file.read()
@@ -279,7 +277,7 @@ def get_all_treebanks(options):
 
 
 def read_conll_dir(treebanks,filetype,maxSize=-1,char_map={}):
-    logger.debug("Max size for each corpus: ", maxSize)
+    print("Max size for each corpus: ", maxSize)
     if filetype == "train":
         return chain(*(read_conll(treebank.trainfile, treebank.iso_id, treebank.proxy_tbank, maxSize, train=True, char_map=char_map) for treebank in treebanks))
     elif filetype == "dev":
@@ -298,7 +296,7 @@ def read_conll(filename, treebank_id=None, proxy_tbank=None, maxSize=-1, hard_li
     # hard lim means capping the corpus size across the whole training procedure
     # soft lim means using a sample of the whole corpus at each epoch
     fh = open(filename,'r',encoding='utf-8')
-    logger.info(f"Reading {filename}")
+    print(f"Reading {filename}")
     if vocab_prep and not hard_lim:
         maxSize = -1 # when preparing the vocab with a soft limit we need to use the whole corpus
     ts = time.time()
@@ -334,12 +332,12 @@ def read_conll(filename, treebank_id=None, proxy_tbank=None, maxSize=-1, hard_li
                             yield tokens
                             yield_count += 1
                             if yield_count == maxSize:
-                                logger.info(f"Capping size of corpus at {yield_count} sentences")
+                                print(f"Capping size of corpus at {yield_count} sentences")
                                 break
                     else:
                         yield tokens
                 else:
-                    logger.debug('Non-projective sentence dropped')
+                    print('Non-projective sentence dropped')
                     dropped += 1
             tokens = [generate_root_token(treebank_id, proxy_tbank, language)]
         else:
@@ -357,28 +355,28 @@ def read_conll(filename, treebank_id=None, proxy_tbank=None, maxSize=-1, hard_li
                 tokens.append(token)
 
     if hard_lim and yield_count < maxSize:
-        logger.warning(f'Unable to yield {maxSize} sentences, only {yield_count} found')
+        print(f'Unable to yield {maxSize} sentences, only {yield_count} found')
 
 # TODO: deal with case where there are still unyielded tokens
 # e.g. when there is no newline at end of file
 #    if len(tokens) > 1:
 #        yield tokens
 
-    logger.debug(f'{sents_read} sentences read')
+    print(f'{sents_read} sentences read')
 
     if maxSize > 0 and not hard_lim:
         if len(sents) > maxSize:
             sents = random.sample(sents,maxSize)
-            logger.debug(f"Yielding {len(sents)} random sentences")
+            print(f"Yielding {len(sents)} random sentences")
         for toks in sents:
             yield toks
 
     te = time.time()
-    logger.info(f'Time: {te-ts:.2g}s')
+    print(f'Time: {te-ts:.2g}s')
 
 
 def write_conll(fn, conll_gen):
-    logger.info(f"Writing to {fn}")
+    print(f"Writing to {fn}")
     sents = 0
     with open(fn, 'w', encoding='utf-8') as fh:
         for sentence in conll_gen:
@@ -386,7 +384,7 @@ def write_conll(fn, conll_gen):
             for entry in sentence[1:]:
                 fh.write(str(entry) + '\n')
             fh.write('\n')
-        logger.debug(f"Wrote {sents} sentences")
+        print(f"Wrote {sents} sentences")
 
 
 def write_conll_multiling(conll_gen, treebanks):
@@ -394,14 +392,14 @@ def write_conll_multiling(conll_gen, treebanks):
     cur_tbank = conll_gen[0][0].treebank_id
     outfile = tbank_dict[cur_tbank].outfilename
     fh = open(outfile,'w',encoding='utf-8')
-    logger.info(f"Writing to {outfile}")
+    print(f"Writing to {outfile}")
     for sentence in conll_gen:
         if cur_tbank != sentence[0].treebank_id:
             fh.close()
             cur_tbank = sentence[0].treebank_id
             outfile = tbank_dict[cur_tbank].outfilename
             fh = open(outfile,'w',encoding='utf-8')
-            logger.info(f"Writing to {outfile}")
+            print(f"Writing to {outfile}")
         for entry in sentence[1:]:
             fh.write(str(entry) + '\n')
         fh.write('\n')
@@ -424,7 +422,7 @@ def normalize(word):
 
 def evaluate(gold,test,conllu):
     scoresfile = test + '.txt'
-    logger.info(f"Writing to {scoresfile}")
+    print(f"Writing to {scoresfile}")
     with open(scoresfile, "w") as scoresfile_stream:
         if not conllu:
             #os.system('perl src/utils/eval.pl -g ' + gold + ' -s ' + test  + ' > ' + scoresfile + ' &')
@@ -454,7 +452,7 @@ def inorder(sentence):
 def set_seeds(options):
     python_seed = 1
     if not options.predict and options.dynet_seed: # seeds shouldn't make any difference when predicting
-        logger.debug("Using default Python seed")
+        print("Using default Python seed")
         random.seed(python_seed)
 
 
@@ -480,7 +478,7 @@ import lzma
 
 def extract_embeddings_from_file(filename, words=None, max_emb=-1, filtered_filename=None):
     # words should be a set used to filter the embeddings
-    logger.info(f"Extracting embeddings from {filename}")
+    print(f"Extracting embeddings from {filename}")
     ts = time.time()
     line_count = 0
     error_count = 0 # e.g. invalid utf-8 in embeddings file
@@ -503,22 +501,22 @@ def extract_embeddings_from_file(filename, words=None, max_emb=-1, filtered_file
                 except StopIteration:
                     break
                 except UnicodeDecodeError:
-                    logger.error(f"Unable to read word at line {line_count}: {word!r}")
+                    print(f"Unable to read word at line {line_count}: {word!r}")
                     error_count += 1
                 line_count += 1
                 if line_count % 100000 == 0:
-                    logger.debug(f"Reading line: {line_count}")
+                    print(f"Reading line: {line_count}")
             else:
                 break
 
-    logger.debug(f"Read {line_count:d} embeddings")
+    print(f"Read {line_count:d} embeddings")
     te = time.time()
-    logger.info(f'Time: {te-ts:.2g}s')
+    print(f'Time: {te-ts:.2g}s')
     if words:
-        logger.debug(f"{len(embeddings):d} entries found from vocabulary (out of {len(words):d})")
+        print(f"{len(embeddings):d} entries found from vocabulary (out of {len(words):d})")
 
     if filtered_filename and embeddings:
-        logger.info(f"Writing filtered embeddings to {filtered_filename}")
+        print(f"Writing filtered embeddings to {filtered_filename}")
         with open(filtered_filename,'w') as fh_filter:
             no_embeddings = len(embeddings)
             embedding_size = len(embeddings.itervalues().next())
@@ -564,7 +562,7 @@ def get_external_embeddings(options, emb_file=None, emb_dir=None,
                     emb_file, words, options.max_ext_emb)
                 external_embedding.update(embeddings)
             else:
-                logger.warning(f"Warning: {emb_file} does not exist, proceeding without")
+                print(f"Warning: {emb_file} does not exist, proceeding without")
 
     return external_embedding
 
