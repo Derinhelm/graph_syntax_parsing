@@ -1,7 +1,6 @@
 from optparse import OptionParser, OptionGroup
 from uuparser.options_manager import OptionsManager
 import pickle, os, time, sys, copy, itertools, re, random
-import dynet_config
 
 from shutil import copyfile
 
@@ -268,7 +267,6 @@ each")
 
     # really important to do this before anything else to make experiments reproducible
     utils.set_seeds(options)
-    dynet_config.set(mem=options.dynet_mem, random_seed=options.dynet_seed)
 
     om = OptionsManager(options)
     experiments = om.create_experiment_list(options) # list of namedtuples
