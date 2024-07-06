@@ -9,6 +9,7 @@ import json
 
 import torch
 import torch.nn as nn
+import torch.optim as optim
 
 import tqdm
 
@@ -30,13 +31,13 @@ class ArcHybridLSTM:
         extra_chars = 1 # OOV vector
         self.chars = {char: ind for ind, char in enumerate(chars,extra_chars)}
 
-        self.activation = torch.nn.Tanh() #Default value from source code.
+        self.activation = torch.nn.Tanh #Default value from source code.
 
         self.mlp_in_dims = 30 # TODO: Create a logical value.
 
-        self.unlabeled_MLP = MLP(mlp_in_dims, options.mlp_hidden_dims,
+        self.unlabeled_MLP = MLP(self.mlp_in_dims, options.mlp_hidden_dims,
                                  options.mlp_hidden2_dims, 4, self.activation)
-        self.labeled_MLP = MLP(mlp_in_dims, options.mlp_hidden_dims,
+        self.labeled_MLP = MLP(self.mlp_in_dims, options.mlp_hidden_dims,
                                options.mlp_hidden2_dims,2*len(self.irels)+2, self.activation)
 
 
@@ -298,7 +299,7 @@ class ArcHybridLSTM:
             #self.feature_extractor.getWordEmbeddings(conll_sentence, False, options, test_embeddings)
             for entry in conll_sentence:
                 entry.vec = [] # There should be a vector from dynet here
-            conll_sentence = [for entry in conll_sentence]
+            conll_sentence = [entry for entry in conll_sentence]
             stack = ParseForest([])
             buf = ParseForest(conll_sentence)
 
