@@ -204,9 +204,9 @@ def inorder(sentence):
     return inorder_helper(sentence,queue[0].id)
 
 
-def set_seeds():
+def set_seeds(seed_value=42):
     info_logger = getLogger('info_logger')
-    python_seed = 42
+    python_seed = seed_value
     info_logger.debug("Using default Python seed")
     random.seed(python_seed)
     torch.manual_seed(python_seed)
