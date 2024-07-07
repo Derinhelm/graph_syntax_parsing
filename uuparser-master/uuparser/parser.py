@@ -34,7 +34,7 @@ def run(experiment,options):
                 print('Initializing the model:')
                 parser = Parser(stored_vocab, stored_options)
 
-            parser.Load(options.continueModel)
+            parser.Load(options.lab_path, options.unlab_path)
 
         dev_best = [options.epochs,-1.0] # best epoch, best score
 
@@ -45,8 +45,8 @@ def run(experiment,options):
             parser.Train(traindata,options)
             print(f'Finished epoch {epoch}')
 
-            model_file = os.path.join(experiment.outdir, options.model + str(epoch))
-            parser.Save(model_file)
+            #model_file = os.path.join(experiment.outdir, options.model + str(epoch))
+            parser.Save(epoch)
 
             if options.pred_dev: # use the model to predict on dev data
 
@@ -101,8 +101,7 @@ def run(experiment,options):
             utils.fix_stored_options(stored_opt,options)
 
             parser = Parser(stored_vocab, stored_opt)
-            model = os.path.join(experiment.modeldir, options.model)
-            parser.Load(model)
+            parser.Load(options.lab_path, options.unlab_path)
 
             ts = time.time()
 
@@ -239,6 +238,10 @@ each")
     group.add_option("--activation", help="Activation function in the MLP", default="tanh")
     group.add_option("--no-bilstms", type="int", metavar="INTEGER",
         help='Number of stacked BiLstms - set to 0 to disable', default=2)
+    group.add_option("--lab_path", type="str",
+        help='Path to saved labeled_MLP', default='')
+    group.add_option("--unlab_path", type="str",
+        help='Path to saved labeled_MLP', default='')
     parser.add_option_group(group)
 
     group = OptionGroup(parser, "Logging options")
