@@ -12,14 +12,16 @@ import torch
 class MLPBlock(nn.Module):
     def __init__(self, hidden_channels, out_channels):
         super().__init__()
+        self.lstm = nn.LSTM(312 * 3, 312 * 3, bidirectional=True, batch_first=True)
         self.layers_stack = nn.Sequential(
-            nn.Linear(312 * 3, hidden_channels),
+            nn.Linear(312 * 3 * 2, hidden_channels), # 2 - because of biderectional LSTM
             nn.ReLU(),
             nn.Linear(hidden_channels, out_channels),
         )
 
     def forward(self, x):
-        return self.layers_stack(x)
+        x_lstm, _ = self.lstm(x)
+        return self.layers_stack(x_lstm)
 
 class MLPNet:
     def __init__(self, options, out_irels_dims, device):
