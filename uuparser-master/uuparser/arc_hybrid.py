@@ -7,6 +7,8 @@ from copy import deepcopy
 from collections import defaultdict
 import json
 
+from shutil import copyfile
+
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -119,11 +121,16 @@ class ArcHybridLSTM:
                     [ (None, SWAP, scrs[1] + uscrs1) ] if swap_conditions else [] ]
         return ret
 
-    def Save(self, epoch):
+    def create_model_paths(self, epoch):
         lab_path = 'models/model_lab' + '_' + str(epoch)
+        unlab_path = 'models/model_unlab' + '_' + str(epoch)
+
+        return unlab_path, lab_path
+
+    def Save(self, epoch):
+        unlab_path, lab_path = self.create_model_paths(epoch)
         torch.save({'epoch': epoch, 'model_state_dict': self.labeled_MLP.state_dict()}, \
                    lab_path)
-        unlab_path = 'models/model_unlab' + '_' + str(epoch)
         torch.save({'epoch': epoch, 'model_state_dict': self.unlabeled_MLP.state_dict()}, \
                    unlab_path)
     
@@ -141,6 +148,14 @@ class ArcHybridLSTM:
         mlp_checkpoint = torch.load(unlab_path)
         self.unlabeled_MLP.load_state_dict(mlp_checkpoint['model_state_dict'], strict=False)
         #self.unlabeled_MLP.to(self.device)
+
+    def copy_best(self, epoch):
+        unlab_path, lab_path = self.create_model_paths(epoch)
+        best_unlab_path, best_lab_path = "models/best_lab", "models/best_unlab"
+        copyfile(lab_path, best_lab_path)
+        copyfile(unlab_path, best_unlab_path)
+        print(f"Copying {unlab_path, lab_path} to {best_unlab_path, best_lab_path}")
+
 
     def apply_transition(self,best,stack,buf,hoffset):
         if best[1] == SHIFT:
