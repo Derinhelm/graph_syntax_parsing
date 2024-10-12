@@ -7,7 +7,8 @@ from copy import deepcopy
 from itertools import chain
 
 from constants import LEFT_ARC, RIGHT_ARC, SHIFT, SWAP, EMBED_SIZE
-from configuration_embedder import ConfigurationEmbedder
+from configuration_embedder import SimpleConfigurationEmbedder, \
+    GraphConfigurationEmbedder
 from utils import ConllEntry, ParseForest, generate_root_token
 
 class Configuration:
@@ -25,7 +26,14 @@ class Configuration:
         self.word_embeds[0] = root_token.start_embed
         for i, token in enumerate(self.sentence):
             self.word_embeds[i + 1] = token.start_embed
-        self.config_embed_creator = ConfigurationEmbedder(self.device, self.mode, self)
+
+        if self.mode == "graph":
+            self.config_embed_creator = GraphConfigurationEmbedder(self.device, self.mode, self)
+        elif self.mode == "mlp":
+            self.config_embed_creator = SimpleConfigurationEmbedder(self.device, self.mode, self)
+        else:
+            print(f"Wrong mode:{self.mode}")
+            exit(1) # TODO
 
     def get_config_embed(self):
         return self.config_embed_creator.get_config_embed()
