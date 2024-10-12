@@ -58,7 +58,8 @@ class Parser:
         config_list = []
         isentence_config_dict = {} # sentence_ind -> Configuration
         for sentence_ind, osentence in enumerate(data,1):
-            config = Configuration(osentence, self.oracle.irels, self.device)
+            config = Configuration(osentence, self.oracle.irels,
+                                   self.device, self.mode)
             # конфигурации в порядке предложений в данных,
             # в процессе работы конфигурации изменяются
             # в итоге все конфигурации станут итоговыми
@@ -93,7 +94,7 @@ class Parser:
                                      self.batch_mode)
         batch_configs = batch_creator.get_new_batch()
         while batch_configs is not None:
-            batch_embeds = [config.get_config_embed(self.device, self.mode)
+            batch_embeds = [config.get_config_embed()
                                  for config, _, _, _, _ in batch_configs]
             reached_max_swap, new_batch_config_list = \
                 self.create_test_next_configs_batch(reached_max_swap, batch_embeds, batch_configs)
@@ -136,14 +137,14 @@ class Parser:
 
         beg = time.time()
         config_list = [Configuration(sentence, self.oracle.irels,
-                                     self.device)
+                                     self.device, self.mode)
                             for sentence in trainData]
 
         batch_creator = BatchCreator(config_list, self.oracle.elems_in_batch,
                                      self.batch_mode)
         batch_configs = batch_creator.get_new_batch()
         while batch_configs is not None:
-            batch_embeds = [config.get_config_embed(self.device, self.oracle.mode)
+            batch_embeds = [config.get_config_embed()
                                for config in batch_configs]
             new_config_list = \
                 self.create_train_next_configs_batch(batch_embeds, batch_configs)

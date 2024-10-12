@@ -11,7 +11,9 @@ from constants import LEFT_ARC, RIGHT_ARC, SHIFT, SWAP, EMBED_SIZE
 from utils import ConllEntry, ParseForest, generate_root_token
 
 class Configuration:
-    def __init__(self, sentence, irels, device):
+    def __init__(self, sentence, irels, device, mode):
+        self.device = device
+        self.mode = mode
         self.sentence = deepcopy(sentence)
         # sentence = [ConllEntry_root, ConllEntry_1, ConllEntry_2, ...]
         root_token = self.sentence[0]
@@ -24,8 +26,9 @@ class Configuration:
         for i, token in enumerate(self.sentence):
             self.word_embeds[i + 1] = token.start_embed
         self.graph = ConfigGraph(self.sentence, self.word_embeds, device)
+        self.config_embed = self._create_config_embed(self.device, self.mode)
 
-    def get_config_embed(self, device, mode="graph"):
+    def _create_config_embed(self, device, mode="graph"):
         if mode == "graph":
             return self.graph.get_graph()
         else:
@@ -37,6 +40,9 @@ class Configuration:
             embed = torch.cat(top_stack + top_buffer)
             embed = embed.to(device)
             return embed
+
+    def get_config_embed(self):
+        return self.config_embed
 
     def __str__(self):
         s = "Config.\nsentence: " + ", ".join(map(str, self.sentence)) + "\n"
@@ -90,6 +96,7 @@ class Configuration:
             #attach
             child.pred_parent_id = parent.id
             child.pred_relation = best[0]
+        self.config_embed = self._create_config_embed(self.device, self.mode)
 
     def get_stack_ids(self):
         return [sitem.id for sitem in self.stack.roots]
