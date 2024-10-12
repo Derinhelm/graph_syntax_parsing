@@ -12,12 +12,18 @@ from constants import SWAP
 from oracle import Oracle
 from utils import ConllEntry
 
+def clear_config(config, device_type):
+    del config
+    if device_type == "cuda":
+        torch.cuda.empty_cache()
+
 class Parser:
     def __init__(self, options, irels, mode, batch_mode):
         self.dynamic_oracle = options["dynamic_oracle"]
         self.mode = mode
         self.batch_mode = batch_mode
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu" )
+        self.device_type = "cuda" if torch.cuda.is_available() else "cpu"
+        self.device = torch.device(self.device_type)
         print("device:", self.device)
         self.oracle = Oracle(options, irels, self.device, mode)
         self.info_logger = getLogger('info_logger')
@@ -104,6 +110,7 @@ class Parser:
         for sentence_ind, osentence in enumerate(data,1):
             config = isentence_config_dict[sentence_ind]
             res_osentence = self.create_conll_res(osentence, config)
+            clear_config(config, self.device_type)
             yield res_osentence
 
     def train_transition_processing(self, config, best, shift_case):
@@ -125,6 +132,8 @@ class Parser:
             self.train_transition_processing(config, best_transition, shift_case)
             if not config.is_end():
                 not_finished_configs.append(config)
+            else:
+                clear_config(config, self.device_type)
         return not_finished_configs
 
     def Train(self, trainData):
@@ -157,3 +166,4 @@ class Parser:
 
         self.info_logger.info(f"Loss: {mloss / len(trainData)}")
         self.info_logger.info(f"Total Training Time: {time.time() - beg:.2g}s")
+
