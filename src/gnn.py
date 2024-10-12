@@ -2,11 +2,13 @@ from copy import deepcopy
 from logging import getLogger
 import time
 import torch
+from torch_geometric.data import Batch
 from torch_geometric.utils import scatter
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 
+from torch_geometric.loader import DataLoader
 from torch_geometric.nn import SAGEConv, to_hetero
 import torch
 
@@ -62,13 +64,20 @@ class GNNNet:
         torch.save({'epoch': epoch, 'model_state_dict': self.net.state_dict()}, \
                    gnn_path)
 
-    def evaluate(self, graph):
+    def evaluate(self, graph_list):
+        dl = DataLoader(graph_list, batch_size=len(graph_list), shuffle=False)
+        batch_list = list(dl)
+        if len(dl) > 1:
+            print(f"Error batch len in graph DataLoader:{len(dl)}")
+            exit(1) # TODO
+        graph_batch = batch_list[0]
+        print(f"graph:{graph_batch}")
         self.optimizer.zero_grad()
 
-        graph_info = graph.x_dict, graph.edge_index_dict
+        graph_info = graph_batch.x_dict, graph_batch.edge_index_dict
         all_scrs_net = self.net(*graph_info)
         all_scrs_clone = all_scrs_net['node']
-        all_scrs = scatter(all_scrs_clone, graph['node'].batch, dim=0, reduce='mean')
+        all_scrs = scatter(all_scrs_clone, graph_batch['node'].batch, dim=0, reduce='mean')
         detach_all_scrs = all_scrs.clone().detach().cpu()
         return list(all_scrs), list(detach_all_scrs)
 
