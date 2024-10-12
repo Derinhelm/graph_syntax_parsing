@@ -12,7 +12,9 @@ from data import get_data
 
 @pytest.mark.parametrize("context_embed_flag",
                          [True, False])
-def test_full_cycle(context_embed_flag):
+@pytest.mark.parametrize("mode",
+                         ["mlp", "gnn"])
+def test_full_cycle(context_embed_flag, mode):
     import os
     os.system("rm -fr new_models; mkdir new_models") # TODO
 
@@ -23,4 +25,4 @@ def test_full_cycle(context_embed_flag):
         real_dataset=False, embed_pickle_using=True, colab=False)
 
     options = create_options(epochs=3)
-    run(train, val, test, options=options)
+    run(train, val, test, options=options, mode=mode)
