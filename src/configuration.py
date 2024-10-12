@@ -7,8 +7,8 @@ from copy import deepcopy
 from itertools import chain
 
 from constants import LEFT_ARC, RIGHT_ARC, SHIFT, SWAP, EMBED_SIZE
-from configuration_embedder import SimpleConfigurationEmbedder, \
-    GraphConfigurationEmbedder
+from mlp.simple_configuration_embedder import SimpleConfigurationEmbedder
+from gnn.graph_configuration_embedder import GraphConfigurationEmbedder
 from utils import ConllEntry, ParseForest, generate_root_token
 
 class Configuration:

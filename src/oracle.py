@@ -10,10 +10,10 @@ class Oracle:
     def __init__(self, options, irels, device, mode):
         self.mode = mode
         if mode == "graph":
-            from gnn import GNNNet
+            from gnn.gnn import GNNNet
             self.net = GNNNet(options, len(irels), device)
         else:
-            from mlp import MLPNet
+            from mlp.mlp import MLPNet
             self.net = MLPNet(options, len(irels), device)
         print(self.net)
         self.elems_in_batch = options["elems_in_batch"]
