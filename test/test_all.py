@@ -7,7 +7,7 @@ from project_logging import logger_creating
 logger_creating()
 
 from utils import set_seeds
-from run import run
+from run import run, create_options
 from data import get_data
 
 @pytest.mark.parametrize("context_embed_flag",
@@ -22,4 +22,5 @@ def test_full_cycle(context_embed_flag):
     train, val, test = get_data(context_embed=context_embed_flag,
         real_dataset=False, embed_pickle_using=True, colab=False)
 
-    run(train, val, test, epochs=3)
+    options = create_options(epochs=3)
+    run(train, val, test, options=options)
