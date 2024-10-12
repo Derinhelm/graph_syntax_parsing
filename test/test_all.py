@@ -13,7 +13,7 @@ from data import get_data
 @pytest.mark.parametrize("context_embed_flag",
                          [True, False])
 @pytest.mark.parametrize("mode",
-                         ["mlp", "gnn"])
+                         ["mlp", "graph"])
 def test_full_cycle(context_embed_flag, mode):
     import os
     os.system("rm -fr new_models; mkdir new_models") # TODO
