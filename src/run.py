@@ -1,7 +1,6 @@
 from logging import getLogger
 import time
 
-from create_embeds import create_start_embeds
 from metrics_logging import save_metric
 from project_parser import Parser
 from utils import ConllEntry, get_irels
@@ -35,7 +34,7 @@ def evaluate_uas_epoche(sentence_list):
 
 p = None
 
-def run(traindata, valdata, testdata, embeds, hidden_dims=100, learning_rate=0.001,\
+def run(traindata, valdata, testdata, hidden_dims=100, learning_rate=0.001,\
         dynamic_oracle=True, epochs=10, first_epoch=1, info_logging=True, \
         time_logging=True, transition_logging=True, elems_in_batch=1, mode="mlp",
         batch_mode="breadth"):
@@ -61,14 +60,11 @@ def run(traindata, valdata, testdata, embeds, hidden_dims=100, learning_rate=0.0
         transition_logger.removeHandler(transition_logger.handlers[0])
     irels = get_irels(traindata)
     info_logger.debug('Initializing the model')
-    parser = Parser(options, irels, embeds, mode, batch_mode)
+    parser = Parser(options, irels, mode, batch_mode)
     global p
     p = parser
 
     dev_best = [options["epochs"],-1.0] # best epoch, best score
-
-    for sentence in traindata + valdata + testdata:
-        create_start_embeds(sentence, embeds)
 
     for epoch in range(options["first_epoch"], options["epochs"] + 1):
         # Training

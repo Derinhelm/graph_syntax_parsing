@@ -19,7 +19,7 @@ def test_full_cycle(context_embed_flag):
     # really important to do this before anything else to make experiments reproducible
     set_seeds()
 
-    train, val, test, embeds = get_data(context_embed=context_embed_flag,
+    train, val, test = get_data(context_embed=context_embed_flag,
         real_dataset=False, embed_pickle_using=True, colab=False)
 
-    run(train, val, test, embeds, epochs=3)
+    run(train, val, test, epochs=3)

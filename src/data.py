@@ -1,6 +1,6 @@
-from utils import set_seeds, read_conll
-from run import run
+from create_embeds import create_start_embeds
 from embeddings import create_embeds, load_embeds, TinyBertEmbeddingCreator
+from utils import read_conll
 
 def get_real_data(embed_pickle_using, context_embed, prefix, train_a_using=True,
                   train_b_using=True, train_c_using=True):
@@ -45,7 +45,7 @@ def get_short_data(embed_pickle_using, context_embed, prefix):
         embeds = ("independent", embeds)
     return train, val, test, embeds
 
-def get_data(real_dataset=False, embed_pickle_using=True,
+def get_conll_data(real_dataset=False, embed_pickle_using=True,
              context_embed=True,
              colab=False, prefix="", train_a_using=True,
                   train_b_using=True, train_c_using=True):
@@ -70,3 +70,15 @@ def get_data(real_dataset=False, embed_pickle_using=True,
             return get_short_data(embed_pickle_using,
                                   context_embed,
                                   prefix + 'UD_Russian-SynTagRus-small/')
+
+def get_data(real_dataset=False, embed_pickle_using=True,
+             context_embed=True,
+             colab=False, prefix="", train_a_using=True,
+                  train_b_using=True, train_c_using=True):
+    train, val, test, embeds = get_conll_data(real_dataset, embed_pickle_using,
+                context_embed, colab, prefix, train_a_using,
+                train_b_using, train_c_using)
+
+    for sentence in train + val + test:
+        create_start_embeds(sentence, embeds)
+    return train, val, test

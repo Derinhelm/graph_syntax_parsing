@@ -13,14 +13,13 @@ from oracle import Oracle
 from utils import ConllEntry
 
 class Parser:
-    def __init__(self, options, irels, embeds, mode, batch_mode):
+    def __init__(self, options, irels, mode, batch_mode):
         self.dynamic_oracle = options["dynamic_oracle"]
         self.mode = mode
         self.batch_mode = batch_mode
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu" )
         print("device:", self.device)
         self.oracle = Oracle(options, irels, self.device, mode)
-        self.embeds = embeds
         self.info_logger = getLogger('info_logger')
         self.time_logger = getLogger('time_logger')
         #self.transition_logger = getLogger('transition_logger')
