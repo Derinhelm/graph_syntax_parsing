@@ -145,8 +145,8 @@ class TrainScores:
     def create_best_transition(self, config, dynamic_oracle, errors, irels):
         valid, wrong, shift_case, swap_cost = \
             self.create_valid_wrong(config, irels)
-        best_valid = max(valid, key=itemgetter(2))
-        best_wrong = max(wrong, key=itemgetter(2))
+        best_valid = max(valid, key=itemgetter(2), default=None)
+        best_wrong = max(wrong, key=itemgetter(2), default=None)
         best = self.choose_best(best_valid, best_wrong,
                                 swap_cost, dynamic_oracle)
         errors.error_append(best, best_valid, best_wrong, config)

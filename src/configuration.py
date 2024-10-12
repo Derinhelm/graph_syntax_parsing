@@ -7,36 +7,22 @@ from copy import deepcopy
 from itertools import chain
 
 from configuration_graph import ConfigGraph
-from constants import LEFT_ARC, RIGHT_ARC, SHIFT, SWAP
-from utils import ConllEntry, ParseForest
+from constants import LEFT_ARC, RIGHT_ARC, SHIFT, SWAP, EMBED_SIZE
+from utils import ConllEntry, ParseForest, generate_root_token
 
 class Configuration:
-    def __init__(self, sentence, irels, embeds, device):
+    def __init__(self, sentence, irels, device):
         self.sentence = deepcopy(sentence)
-        # ensures we are working with a clean copy of sentence and allows memory to be recycled each time round the loop
-        self.sentence = [entry for entry in self.sentence if isinstance(entry, ConllEntry)]
-        self.sentence = self.sentence[1:] + [self.sentence[0]]
+        # sentence = [ConllEntry_root, ConllEntry_1, ConllEntry_2, ...]
+        root_token = self.sentence[0]
         self.stack = ParseForest([])
-        self.buffer = ParseForest(self.sentence)
+        self.buffer = ParseForest(self.sentence[1:] + [root_token])
         for root in self.sentence:
             root.relation = root.relation if root.relation in irels else 'runk'
-        self.embed_size = 312 # for tiny-bert
-        self.word_embeds = torch.empty((len(self.sentence), self.embed_size))
-        if embeds[0] == "context": # context embeds are used
-            sent_words = ['root'] + [w.form for w in self.sentence][:-1]# Last element is a technical root element.
-            #print("sent_words:", sent_words)
-            embed_creator = embeds[1]
-            sent_embeds = embed_creator.create_first_bert_embeddings_sent(sent_words)
-            for i in range(len(sent_words)):
-                self.word_embeds[i] = sent_embeds[i]
-        elif embeds[0] == "independent": # embeds from dict are used (embeds are generated for lexeme without context)
-            self.word_embeds[0] = torch.zeros(self.embed_size) # TODO: temporary solution for root element
-            for i in range(len(self.sentence) - 1): # Last element is a technical root element.
-                self.word_embeds[i + 1] = embeds[self.sentence[i].lemma] # Word number id starts from 1 in the graph.
-        else:
-            print("Wrong embedding type:", embeds[0])
-            import sys
-            sys.exit(-1)
+        self.word_embeds = torch.empty((len(self.sentence) + 1, EMBED_SIZE))
+        self.word_embeds[0] = root_token.start_embed
+        for i, token in enumerate(self.sentence):
+            self.word_embeds[i + 1] = token.start_embed
         self.graph = ConfigGraph(self.sentence, self.word_embeds, device)
 
     def get_config_embed(self, device, mode="graph"):
@@ -45,7 +31,7 @@ class Configuration:
         else:
             top_stack = [self.word_embeds[token.id] for token in self.stack.roots[-2:]]
             for _ in range(2 - len(top_stack)): # if stack doesn`t consist 2 tokens
-                top_stack.append(torch.zeros(self.embed_size))
+                top_stack.append(torch.zeros(EMBED_SIZE))
             buffer_id = self.buffer.roots[0].id
             top_buffer = [self.word_embeds[buffer_id]] # buffer len should be more than 0
             embed = torch.cat(top_stack + top_buffer)

@@ -5,6 +5,8 @@ import time
 import torch
 import random
 
+from constants import EMBED_SIZE
+
 class ConllEntry:
     def __init__(self, id, form, lemma, pos, cpos, feats=None, parent_id=None, relation=None,
         deps=None, misc=None):
@@ -21,12 +23,15 @@ class ConllEntry:
         self.deps = deps
         self.misc = misc
 
+        self.projective_order = None
+
         self.pred_parent_id = None
         self.pred_relation = None
 
         self.pred_pos = None
         self.pred_cpos = None
 
+        self.start_embed = None
 
     def __str__(self):
         '''values = [str(self.id), self.form, self.lemma, \
@@ -111,7 +116,6 @@ def generate_root_token():
     return ConllEntry(0, '*root*', '*root*', 'ROOT-POS', 'ROOT-CPOS', '_', -1,
         'rroot', '_', '_')
 
-
 def read_conll(filename, drop_nproj=False, train=True):
     fh = open(filename,'r',encoding='utf-8')
     info_logger = getLogger('info_logger')
@@ -122,6 +126,7 @@ def read_conll(filename, drop_nproj=False, train=True):
     sentences = []
     tokens = [generate_root_token()]
     words = set() # all words from the dataset file
+    comment_lines = []# TODO: зачем?
     for line in fh:
         tok = line.strip().split('\t')
         if not tok or line.strip() == '': # empty line, add sentence to list or yield
@@ -147,7 +152,7 @@ def read_conll(filename, drop_nproj=False, train=True):
         else:
             if line[0] == '#' or '-' in tok[0] or '.' in tok[0]: 
             # a comment line, add to tokens as is
-                tokens.append(line.strip())
+                comment_lines.append(line.strip())
             else: # an actual ConllEntry, add to tokens
                 if tok[2] == "_":
                     tok[2] = tok[1].lower()

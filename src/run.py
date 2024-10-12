@@ -1,6 +1,7 @@
 from logging import getLogger
 import time
 
+from create_embeds import create_start_embeds
 from metrics_logging import save_metric
 from project_parser import Parser
 from utils import ConllEntry, get_irels
@@ -65,6 +66,9 @@ def run(traindata, valdata, testdata, embeds, hidden_dims=100, learning_rate=0.0
     p = parser
 
     dev_best = [options["epochs"],-1.0] # best epoch, best score
+
+    for sentence in traindata + valdata + testdata:
+        create_start_embeds(sentence, embeds)
 
     for epoch in range(options["first_epoch"], options["epochs"] + 1):
         # Training

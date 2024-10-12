@@ -59,8 +59,9 @@ class Parser:
         config_list = []
         isentence_config_dict = {} # sentence_ind -> Configuration
         for sentence_ind, osentence in enumerate(data,1):
-            config = Configuration(osentence, self.oracle.irels, self.embeds, self.device)
-            # конфигурации в порядке предложений в данных, в процессе работы конфигурации изменяются
+            config = Configuration(osentence, self.oracle.irels, self.device)
+            # конфигурации в порядке предложений в данных,
+            # в процессе работы конфигурации изменяются
             # в итоге все конфигурации станут итоговыми
             isentence_config_dict[sentence_ind] = config
             max_swap = 2*len(osentence)
@@ -136,7 +137,7 @@ class Parser:
 
         beg = time.time()
         config_list = [Configuration(sentence, self.oracle.irels,
-                                     self.embeds, self.device)
+                                     self.device)
                             for sentence in trainData]
 
         batch_creator = BatchCreator(config_list, self.oracle.elems_in_batch,
