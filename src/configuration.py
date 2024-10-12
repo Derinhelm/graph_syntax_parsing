@@ -6,8 +6,8 @@ import torch
 from copy import deepcopy
 from itertools import chain
 
-from configuration_graph import ConfigGraph
 from constants import LEFT_ARC, RIGHT_ARC, SHIFT, SWAP, EMBED_SIZE
+from configuration_embedder import ConfigurationEmbedder
 from utils import ConllEntry, ParseForest, generate_root_token
 
 class Configuration:
@@ -25,35 +25,18 @@ class Configuration:
         self.word_embeds[0] = root_token.start_embed
         for i, token in enumerate(self.sentence):
             self.word_embeds[i + 1] = token.start_embed
-        self.graph = ConfigGraph(self.sentence, self.word_embeds, device)
-        self.config_embed = self._create_config_embed(self.device, self.mode)
-
-    def _create_config_embed(self, device, mode="graph"):
-        if mode == "graph":
-            return self.graph.get_graph()
-        else:
-            top_stack = [self.word_embeds[token.id] for token in self.stack.roots[-2:]]
-            for _ in range(2 - len(top_stack)): # if stack doesn`t consist 2 tokens
-                top_stack.append(torch.zeros(EMBED_SIZE))
-            buffer_id = self.buffer.roots[0].id
-            top_buffer = [self.word_embeds[buffer_id]] # buffer len should be more than 0
-            embed = torch.cat(top_stack + top_buffer)
-            embed = embed.to(device)
-            return embed
+        self.config_embed_creator = ConfigurationEmbedder(self.device, self.mode, self)
 
     def get_config_embed(self):
-        return self.config_embed
+        return self.config_embed_creator.get_config_embed()
 
     def __str__(self):
         s = "Config.\nsentence: " + ", ".join(map(str, self.sentence)) + "\n"
         s += "stack: " + str(self.stack) + "\n"
         s += "buffer: " + str(self.buffer) + "\n"
-        s += "graph:" + str(self.graph)
         return s
 
     def apply_transition(self, best):
-        #time_logger = getLogger('time_logger')
-        #ts = time.time()
         if best[1] == SHIFT:
             buf_0 = self.buffer.roots[0].id
             buf_1 = self.buffer.roots[1].id
@@ -61,9 +44,7 @@ class Configuration:
 
             self.stack.roots.append(self.buffer.roots[0])
             del self.buffer.roots[0]
-            #ts = time.time()
-            self.graph.apply_shift(buf_0, buf_1, stack_last)
-            #time_logger.info(f"Time of graph apply_transition: {time.time() - ts}")
+            trans_info = (buf_0, buf_1, stack_last)
 
         elif best[1] == SWAP:
             child = self.stack.roots.pop()
@@ -72,31 +53,28 @@ class Configuration:
             buf_0_old_id = self.buffer.roots[0].id
             buf_1_old_id = self.buffer.roots[1].id if len(self.buffer.roots) > 1 else None
             self.buffer.roots.insert(1,child)
-            #ts = time.time()
-            self.graph.apply_swap(buf_0_old_id, buf_1_old_id, stack_new_last_id, child_id)
-            #time_logger.info(f"Time of graph apply_transition: {time.time() - ts}")
-
+            trans_info = (buf_0_old_id, buf_1_old_id, stack_new_last_id, child_id)
 
         elif best[1] == LEFT_ARC:
             child = self.stack.roots.pop()
             stack_new_last_id = self.stack.roots[-1].id if len(self.stack.roots) != 0 else None
             parent = self.buffer.roots[0]
-            #ts = time.time()
-            self.graph.apply_left_arc(parent.id, child.id, stack_new_last_id, child.pred_relation)
-            #time_logger.info(f"Time of graph apply_transition: {time.time() - ts}")
+            trans_info = (parent.id, child.id, stack_new_last_id, child.pred_relation)
 
         elif best[1] == RIGHT_ARC:
             child = self.stack.roots.pop()
             parent = self.stack.roots[-1]
-            #ts = time.time()
-            self.graph.apply_right_arc(parent.id, child.id, child.pred_relation)
-            #time_logger.info(f"Time of graph apply_transition: {time.time() - ts}")
+            trans_info = (parent.id, child.id, child.pred_relation)
+        else:
+            print(f"Wrong transition:{best[1]}")
+            exit(1) # TODO
 
         if best[1] == LEFT_ARC or best[1] == RIGHT_ARC:
             #attach
             child.pred_parent_id = parent.id
             child.pred_relation = best[0]
-        self.config_embed = self._create_config_embed(self.device, self.mode)
+
+        self.config_embed_creator.apply_transition(best[1], trans_info, self)
 
     def get_stack_ids(self):
         return [sitem.id for sitem in self.stack.roots]
