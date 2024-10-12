@@ -1,5 +1,6 @@
 import sys
-sys.path.append('..')
+sys.path.append('./src')
+#sys.path.append('../src')
 
 from project_logging import logger_creating
 logger_creating()
