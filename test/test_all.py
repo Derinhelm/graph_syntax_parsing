@@ -10,7 +10,7 @@ from data import get_data
 
 def test_full_cycle():
     import os
-    os.system("mkdir models") # TODO
+    os.system("mkdir new_models") # TODO
 
     # really important to do this before anything else to make experiments reproducible
     set_seeds()

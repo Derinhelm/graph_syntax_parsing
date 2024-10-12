@@ -43,7 +43,7 @@ class MLPNet:
                                          lr=options["learning_rate"], momentum=0.9)
 
     def Load(self, epoch):
-        mlp_path = 'models/model_mlp' + '_' + str(epoch)
+        mlp_path = 'new_models/model_mlp' + '_' + str(epoch)
 
         self.net = MLPBlock(hidden_channels=self.hidden_dims, \
                             out_channels=self.unlabeled_res_size + \
@@ -55,7 +55,7 @@ class MLPNet:
 
     def Save(self, epoch):
         info_logger = getLogger('info_logger')
-        mlp_path = 'models/model_mlp' + '_' + str(epoch)
+        mlp_path = 'new_models/model_mlp' + '_' + str(epoch)
         info_logger.info(f'Saving net model to {mlp_path}')
         torch.save({'epoch': epoch, 'model_state_dict': self.net.state_dict()}, \
                    mlp_path)

@@ -44,7 +44,7 @@ class GNNNet:
                                          lr=options["learning_rate"], momentum=0.9)
 
     def Load(self, epoch):
-        gnn_path = 'models/model_gnn' + '_' + str(epoch)
+        gnn_path = 'new_models/model_gnn' + '_' + str(epoch)
 
         self.net = GNNBlock(hidden_channels=self.hidden_dims, \
                             out_channels=self.unlabeled_res_size + \
@@ -57,7 +57,7 @@ class GNNNet:
 
     def Save(self, epoch):
         info_logger = getLogger('info_logger')
-        gnn_path = 'models/model_gnn' + '_' + str(epoch)
+        gnn_path = 'new_models/model_gnn' + '_' + str(epoch)
         info_logger.info(f'Saving gnn model to {gnn_path}')
         torch.save({'epoch': epoch, 'model_state_dict': self.net.state_dict()}, \
                    gnn_path)
