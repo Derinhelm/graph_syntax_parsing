@@ -4,7 +4,7 @@ sys.path.append('./src')
 #sys.path.append('../src')
 
 from project_logging import logger_creating
-logger_creating()
+logger_creating() # TODO: переместить в тесты?
 
 from utils import set_seeds
 from run import run, create_options
