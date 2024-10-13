@@ -58,7 +58,7 @@ class Parser:
             #print(tok_o.__dict__, tok.__dict__)
             tok_o.pred_relation = tok.pred_relation
             tok_o.pred_parent_id = tok.pred_parent_id
-        return osentence
+        return osentence[:-1] # without root
 
     def create_test_config_list(self, data):
         config_list = []
