@@ -22,4 +22,8 @@ class SimpleConfigurationEmbedder:
         return self.config_embed
 
     def apply_transition(self, transition, graph_info, config):
+        old_embed = self.config_embed
         self.config_embed = self._create_config_embed(config)
+        del old_embed
+        if str(self.device) == "cuda":
+            torch.cuda.empty_cache()
