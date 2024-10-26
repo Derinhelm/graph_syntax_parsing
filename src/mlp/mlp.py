@@ -15,9 +15,21 @@ class MLPBlock(nn.Module):
         self.lstm = nn.LSTM(312 * 3, 312 * 3, bidirectional=True, batch_first=True)
         self.layers_stack = nn.Sequential(
             nn.Linear(312 * 3 * 2, hidden_channels), # 2 - because of biderectional LSTM
-            nn.ReLU(),
+            nn.ReLU(), # TODO: связываться с calculate_gain
             nn.Linear(hidden_channels, out_channels),
         )
+        
+        for name, param in self.lstm.named_parameters():
+            if 'bias' in name:
+                nn.init.constant_(param, 0.0)
+            elif 'weight' in name:
+                nn.init.xavier_uniform_(param)
+        relu_gain = torch.nn.init.calculate_gain("relu")
+        for child in self.layers_stack.children():
+            if isinstance(child, nn.Linear):
+                torch.nn.init.xavier_uniform_(child.weight, gain=relu_gain)
+                if child.bias is not None:
+                    torch.nn.init.zeros_(child.bias)
 
     def forward(self, x):
         x_lstm, _ = self.lstm(x)
