@@ -29,7 +29,7 @@ class Configuration:
 
         if self.mode == "graph":
             self.config_embed_creator = GraphConfigurationEmbedder(self.device, self.mode, self)
-        elif self.mode == "mlp":
+        elif self.mode == "mlp" or self.mode == "fake":
             self.config_embed_creator = SimpleConfigurationEmbedder(self.device, self.mode, self)
         else:
             print(f"Wrong mode:{self.mode}")

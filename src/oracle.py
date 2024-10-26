@@ -12,9 +12,15 @@ class Oracle:
         if mode == "graph":
             from gnn.gnn import GNNNet
             self.net = GNNNet(options, len(irels), device)
-        else:
+        elif mode == "mlp":
             from mlp.mlp import MLPNet
             self.net = MLPNet(options, len(irels), device)
+        elif mode == "fake":
+            from fake_nn.fake_nn import FakeNet
+            self.net = FakeNet(options, len(irels), device)
+        else:
+            print(f"Wrong mode:{self.mode}")
+            exit(1) # TODO
         print(self.net)
         self.elems_in_batch = options["elems_in_batch"]
         self.irels = irels

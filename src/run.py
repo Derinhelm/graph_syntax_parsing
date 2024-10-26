@@ -14,7 +14,6 @@ def evaluate_uas(sentence_descr):
           if token.pred_parent_id == token.parent_id:
               right_parent_tokens += 1
     uas = right_parent_tokens / conll_len
-    #print("uas:", uas)
     return uas
 
 def evaluate_uas_epoche(sentence_list):

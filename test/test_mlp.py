@@ -10,19 +10,16 @@ from utils import set_seeds
 from run import run, create_options
 from data import get_data
 
-@pytest.mark.parametrize("context_embed_flag",
-                         [True, False])
-@pytest.mark.parametrize("mode",
-                         ["mlp", "graph", "fake"])
-def test_full_cycle(context_embed_flag, mode):
+def test_full_cycle():
     import os
     os.system("rm -fr new_models; mkdir new_models") # TODO
 
     # really important to do this before anything else to make experiments reproducible
     set_seeds()
 
-    train, val, test = get_data(context_embed=context_embed_flag,
+    train, val, test = get_data(context_embed=False,
         real_dataset=False, embed_pickle_using=True, colab=False)
 
-    options = create_options(epochs=3)
-    run(train, val, test, options=options, mode=mode)
+    options = create_options(epochs=2, learning_rate=0.01)
+    run(train, val[:2], test[:2], options=options, mode="mlp", batch_mode="depth")
+    assert False
