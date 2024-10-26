@@ -49,16 +49,12 @@ class Parser:
         return reached_max_swap, reached_swap_for_i_sentence, iSwap
 
     def create_conll_res(self, osentence, config):
-        #print("create_conll_res")
-        #keep in memory the information we need, not all the vectors
         oconll_sentence = [entry for entry in osentence if isinstance(entry, ConllEntry)]
-        oconll_sentence = oconll_sentence[1:] + [oconll_sentence[0]]
         conll_sentence = config.get_sentence()
         for tok_o, tok in zip(oconll_sentence, conll_sentence):
-            #print(tok_o.__dict__, tok.__dict__)
             tok_o.pred_relation = tok.pred_relation
             tok_o.pred_parent_id = tok.pred_parent_id
-        return osentence[:-1] # without root
+        return osentence[1:] # without root
 
     def create_test_config_list(self, data):
         config_list = []
