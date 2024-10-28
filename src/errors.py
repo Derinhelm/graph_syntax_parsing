@@ -1,5 +1,6 @@
 from logging import getLogger
 import time
+import torch
 
 from constants import LEFT_ARC, RIGHT_ARC
 from metrics_logging import save_metric
@@ -12,7 +13,7 @@ class ErrorInfo:
         t_info = {}
         t_info["mloss"], t_info["eloss"], t_info["eerrors"], t_info["lerrors"], t_info["etotal"] \
             = 0.0, 0.0, 0, 0, 0
-        t_info["errs"] = []
+        t_info["errs"] = torch.tensor(0.0, requires_grad=True)
         t_info["sentence_ind"] = -1
         t_info["start"] = time.time()
         return t_info
@@ -31,7 +32,9 @@ class ErrorInfo:
             self.train_info["mloss"] += 1.0 + bestWrong[2] - bestValid[2]
             self.train_info["eloss"] += 1.0 + bestWrong[2] - bestValid[2]
             loss = bestWrong[3] - bestValid[3] # values in computational graph
-            self.train_info["errs"].append(loss)
+            #print(f"loss:{loss}")
+            self.train_info["errs"] = self.train_info["errs"] + loss
+            #print(f"self.train_info['errs']:{self.train_info['errs']}", f"loss:{loss}")
             save_metric("loss", bestWrong[2] - bestValid[2])
 
         #??? when did this happen and why?
@@ -59,7 +62,7 @@ class ErrorInfo:
         self.train_info["sentence_ind"] = sentence_ind
 
     def set_errs(self):
-        self.train_info["errs"] = []
+        self.train_info["errs"] = torch.tensor(0.0, requires_grad=True)
     
     def get_errs(self):
         return self.train_info["errs"]

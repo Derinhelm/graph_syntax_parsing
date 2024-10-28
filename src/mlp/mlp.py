@@ -86,7 +86,6 @@ class MLPNet:
         return scrs, uscrs
 
     def error_processing(self, errs):
-        if len(errs) != 0:
-            eerrs = torch.sum(torch.stack(errs))
-            eerrs.backward()
-            self.optimizer.step()
+        #print(errs)
+        errs.backward()
+        self.optimizer.step()

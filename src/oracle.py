@@ -59,6 +59,7 @@ class Oracle:
 
     def error_processing(self, is_final):
         errs = self.error_info.get_errs()
+        #print(f"error_processing. errs:{errs}")
         self.net.error_processing(errs)
         self.error_info.set_errs()
 

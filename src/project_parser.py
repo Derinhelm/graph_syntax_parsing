@@ -146,13 +146,16 @@ class Parser:
 
         batch_creator = BatchCreator(config_list)
         batch_configs = batch_creator.get_new_batch()
+        i = 0
         while batch_configs is not None:
             batch_embeds = [config.get_config_embed()
                                for config in batch_configs]
             new_config_list = \
                 self.create_train_next_configs_batch(batch_embeds, batch_configs)
             #batch_creator.add_new_config_list(new_config_list)
-            self.oracle.error_processing(False)
+            if i % 100 == 0:
+                self.oracle.error_processing(False)
+            i += 1
             batch_configs = batch_creator.get_new_batch()
 
         self.oracle.error_processing(True)
