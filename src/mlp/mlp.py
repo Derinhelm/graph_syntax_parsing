@@ -49,10 +49,10 @@ class MLPNet:
                                          self.labeled_res_size)
         self.net.to(self.device)
 
-        #self.optimizer = optim.Adam(self.net.parameters(), \
-        #                                    lr=options["learning_rate"])
-        self.optimizer = optim.SGD(self.net.parameters(),
-                                         lr=options["learning_rate"], momentum=0.9)
+        self.optimizer = optim.Adam(self.net.parameters(), \
+                                            lr=options["learning_rate"])
+        #self.optimizer = optim.SGD(self.net.parameters(),
+        #                                 lr=options["learning_rate"], momentum=0.9)
 
     def Load(self, epoch):
         mlp_path = 'new_models/model_mlp' + '_' + str(epoch)
